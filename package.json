@@ -7,12 +7,21 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
+    "zyla:fetch:prizm:silver:psa9": "node scripts/fetch_zyla_prizm_silver_psa9.js",
     "preview": "vite preview"
   },
   "dependencies": {
     "aws-amplify": "^6.15.5",
+    "axios": "^1.11.0",
+    "csv-writer": "^1.6.0",
+    "dayjs": "^1.11.13",
+    "dotenv": "^17.2.1",
+    "ethers": "^6.15.0",
+    "p-limit": "^7.1.0",
     "react": "^19.1.1",
-    "react-dom": "^19.1.1"
+    "react-dom": "^19.1.1",
+    "react-router-dom": "^7.8.1",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@aws-amplify/backend": "^1.16.1",

@@ -1,5 +1,5 @@
-// src/HomePage.jsx
 import React from "react";
+import { Link } from "react-router-dom"; // ✅ import Link
 import logo from "./assets/LogoSimple.jpg";
 import ebayLogo from "./assets/eBay_Logo.png";
 
@@ -29,8 +29,8 @@ export default function HomePage() {
           backgroundColor: "#fafafa",
         }}
       >
-        <a
-          href="/"
+        <Link
+          to="/"
           style={{
             textDecoration: "none",
             color: burntOrange,
@@ -39,9 +39,9 @@ export default function HomePage() {
           }}
         >
           Home
-        </a>
-        <a
-          href="/research"
+        </Link>
+        <Link
+          to="/research"
           style={{
             textDecoration: "none",
             color: burntOrange,
@@ -50,7 +50,7 @@ export default function HomePage() {
           }}
         >
           Research
-        </a>
+        </Link>
       </nav>
 
       {/* Logo + Business Name */}
@@ -59,8 +59,8 @@ export default function HomePage() {
           src={logo}
           alt="Longhorn Cards & Collectibles Logo"
           style={{
-            width: "400px",       // Increased size
-            maxWidth: "90%",      // Responsive on small screens
+            width: "400px", // Increased size
+            maxWidth: "90%", // Responsive on small screens
             marginBottom: "20px",
           }}
         />
@@ -114,9 +114,9 @@ export default function HomePage() {
           Shop Our eBay Store
         </h2>
         <p style={{ fontSize: "1.1rem", marginBottom: "20px", lineHeight: "1.6" }}>
-          Discover our latest listings of baseball, football, and basketball cards
-          as well as unique sports and historical memorabilia — all available
-          exclusively on eBay.
+          Discover our latest listings of baseball, football, and basketball
+          cards as well as unique sports and historical memorabilia — all
+          available exclusively on eBay.
         </p>
         <a
           href="https://ebay.us/m/Zaq5Bf"
@@ -166,22 +166,24 @@ export default function HomePage() {
         </h2>
         <p>
           At Longhorn Cards & Collectibles, we use a structured, data-driven
-          approach to evaluate cards from both <strong>retired legends</strong> and{" "}
-          <strong>active players</strong> across baseball, football, and basketball.
-          Our process combines:
+          approach to evaluate cards from both <strong>retired legends</strong>{" "}
+          and <strong>active players</strong> across baseball, football, and
+          basketball. Our process combines:
         </p>
         <ul style={{ marginLeft: "20px", marginTop: "10px" }}>
           <li>
-            <strong>Fundamental Analysis</strong> — assessing long-term player value,
-            career achievements, awards, and historical significance.
+            <strong>Fundamental Analysis</strong> — assessing long-term player
+            value, career achievements, awards, and historical significance.
           </li>
           <li>
             <strong>Technical Analysis</strong> — tracking market price trends,
-            trading volumes, and chart patterns to identify entry and exit points.
+            trading volumes, and chart patterns to identify entry and exit
+            points.
           </li>
           <li>
-            <strong>Sentiment Analysis</strong> — evaluating Google trends, fan demand, media
-            coverage, and cultural impact to gauge short- and long-term card interest.
+            <strong>Sentiment Analysis</strong> — evaluating Google trends, fan
+            demand, media coverage, and cultural impact to gauge short- and
+            long-term card interest.
           </li>
         </ul>
         <p>
