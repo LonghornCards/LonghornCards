@@ -212,7 +212,7 @@ export default function CombinedTrends() {
           letterSpacing: "0.2px",
         }}
       >
-        Sentiment Analysis
+        Google Trends Analysis
       </h1>
 
       {/* Box-Plot moved ABOVE the player list / charts */}
@@ -745,7 +745,7 @@ function BoxPlotAllPlayers({ rankedRows, columns, burntOrange }) {
         }}
       >
         <h2 style={{ color: burntOrange, margin: 0, fontSize: 20, fontWeight: 800 }}>
-          Box Plots — Full Roster (Ranks 1–100)
+          Box Plots for Google Trends Rankings (Ranks 1–100)
         </h2>
 
         {/* League filters for box plots */}
