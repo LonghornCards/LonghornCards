@@ -98,7 +98,7 @@ export default function HomePage() {
         memorabilia.
       </p>
 
-      {/* eBay Store Section (white background + burnt orange border) */}
+      {/* eBay Store Section */}
       <section
         style={{
           maxWidth: "750px",
@@ -152,7 +152,7 @@ export default function HomePage() {
         </a>
       </section>
 
-      {/* Download History of Sports Trading Cards Section */}
+      {/* Download History Section */}
       <section
         style={{
           maxWidth: "750px",

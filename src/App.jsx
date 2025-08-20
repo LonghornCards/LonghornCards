@@ -2,7 +2,7 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import HomePage from "./HomePage.jsx";
-import Research from "./Research.jsx"; // <-- make sure you create this file
+import Research from "./Research.jsx"; // <-- Research page
 import History from "./History.jsx";   // <-- History page
 
 export default function App() {
