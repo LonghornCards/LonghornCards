@@ -160,7 +160,6 @@ export default function HomePage() {
           padding: "30px 20px",
           textAlign: "center",
           backgroundColor: "#fff",
-          border: `3px solid ${burntOrange}`,
           borderRadius: "10px",
           boxShadow: "0px 3px 8px rgba(0,0,0,0.05)",
         }}
@@ -230,8 +229,8 @@ export default function HomePage() {
         </p>
         <ul style={{ marginLeft: "20px", marginTop: "10px" }}>
           <li>
-            <strong>Fundamental Analysis</strong> — assessing long-term player
-            value, career achievements, awards, and historical significance.
+            <strong>Fundamental Analysis</strong> — assessing player career
+            statistics, career achievements, awards, and historical significance.
           </li>
           <li>
             <strong>Technical Analysis</strong> — tracking market price trends,
@@ -239,7 +238,7 @@ export default function HomePage() {
             points.
           </li>
           <li>
-            <strong>Sentiment Analysis</strong> — evaluating Google trends, fan
+            <strong>Sentiment Analysis</strong> — evaluating Google Trends, fan
             demand, media coverage, and cultural impact to gauge short- and
             long-term card interest.
           </li>
