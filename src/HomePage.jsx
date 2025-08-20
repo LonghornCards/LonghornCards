@@ -1,3 +1,4 @@
+// src/HomePage.jsx
 import React from "react";
 import { Link } from "react-router-dom"; // ✅ import Link
 import logo from "./assets/LogoSimple.jpg";
@@ -39,6 +40,17 @@ export default function HomePage() {
           }}
         >
           Home
+        </Link>
+        <Link
+          to="/history"
+          style={{
+            textDecoration: "none",
+            color: burntOrange,
+            fontWeight: "bold",
+            fontSize: "1.1rem",
+          }}
+        >
+          History of Sports Cards
         </Link>
         <Link
           to="/research"
@@ -137,6 +149,52 @@ export default function HomePage() {
           onMouseOut={(e) => (e.target.style.backgroundColor = burntOrange)}
         >
           Visit Longhorn Cards on eBay
+        </a>
+      </section>
+
+      {/* Download History of Sports Trading Cards Section */}
+      <section
+        style={{
+          maxWidth: "750px",
+          margin: "30px auto",
+          padding: "30px 20px",
+          textAlign: "center",
+          backgroundColor: "#fff",
+          border: `3px solid ${burntOrange}`,
+          borderRadius: "10px",
+          boxShadow: "0px 3px 8px rgba(0,0,0,0.05)",
+        }}
+      >
+        <h2
+          style={{
+            fontSize: "1.8rem",
+            marginBottom: "15px",
+            color: burntOrange,
+          }}
+        >
+          Download History of Sports Trading Cards
+        </h2>
+        <p style={{ fontSize: "1.1rem", marginBottom: "20px", lineHeight: "1.6" }}>
+          Learn more about the evolution of trading cards through our comprehensive guide.
+        </p>
+        <a
+          href="/History_Of_Trading_Cards.pdf"
+          download
+          style={{
+            display: "inline-block",
+            backgroundColor: burntOrange,
+            color: "#fff",
+            padding: "12px 24px",
+            borderRadius: "6px",
+            fontWeight: "bold",
+            fontSize: "1.1rem",
+            textDecoration: "none",
+            transition: "background-color 0.3s ease",
+          }}
+          onMouseOver={(e) => (e.target.style.backgroundColor = "#993F00")}
+          onMouseOut={(e) => (e.target.style.backgroundColor = burntOrange)}
+        >
+          Download PDF
         </a>
       </section>
 
