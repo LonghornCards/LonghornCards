@@ -210,6 +210,7 @@ export default function CombinedTrends() {
           color: burntOrange,
           fontWeight: 800,
           letterSpacing: "0.2px",
+          textAlign: "center",
         }}
       >
         Google Trends Analysis
