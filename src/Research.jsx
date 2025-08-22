@@ -1,76 +1,121 @@
 // src/Research.jsx
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
-import dataUrl from "./assets/Google_Trends_Data.xlsx?url";
+// ✅ Monthly Google Trends ranks
+import trendsUrl from "./assets/Google_Trends_Ranks.xlsx?url";
 import keyReturnsUrl from "./assets/Key_Player_Returns.xlsx?url";
 
 export default function Research() {
-  const [rows, setRows] = useState([]);
-  const [columns, setColumns] = useState([]);
+  const [rows, setRows] = useState([]);       // Monthly Google Trends RANKS rows
+  const [columns, setColumns] = useState([]); // ["Date", "Player (LEAGUE)", ...]
   const [error, setError] = useState("");
   const [selectedPlayers, setSelectedPlayers] = useState([]); // for the charts (up to 5)
 
   // Technical & returns inputs from Key_Player_Returns.xlsx
   const [techScores, setTechScores] = useState([]); // [{ player, raw, scaled0to100 }]
-  const [rsPoints, setRsPoints] = useState([]); // [{ player, rs3, rs12 }]
+  const [rsPoints, setRsPoints] = useState([]);     // [{ player, rs3, rs12 }]
 
   const burntOrange = "#BF5700";
 
-  // -------- Load Google Trends workbook (NBA/MLB/NFL) ----------
+  // -------- Load MONTHLY Google Trends RANKS workbook ----------
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch(dataUrl);
-        if (!res.ok) throw new Error(`Failed to fetch Excel: ${res.status}`);
+        const res = await fetch(trendsUrl);
+        if (!res.ok) throw new Error(`Failed to fetch Google_Trends_Ranks.xlsx: ${res.status}`);
         const buf = await res.arrayBuffer();
         const wb = XLSX.read(buf, { type: "array" });
 
-        const leagues = ["NBA", "MLB", "NFL"];
-        const rowMap = new Map();
-        const colOrder = ["Date"];
+        const firstSheet = wb.SheetNames[0];
+        const ws = wb.Sheets[firstSheet];
+        if (!ws) throw new Error("Google_Trends_Ranks sheet not found.");
 
-        const addSheet = (sheetName, league) => {
-          const ws = wb.Sheets[sheetName];
-          if (!ws) return;
-          const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
-          if (!aoa.length) return;
+        const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
+        if (!aoa.length) throw new Error("Google_Trends_Ranks sheet is empty.");
 
-          const headers = aoa[0];
+        // Find header row with "Player" and "Sport"
+        let headerRowIdx = 0;
+        let playerCol = -1;
+        let sportCol = -1;
 
-          // Clean header labels: remove any parenthetical text, strip accents, append league
-          const players = headers.slice(1).map((h) => {
-            const cleaned = h.replace(/\s*\([^)]*\)/g, "").trim().replace(/:$/, "");
-            const asciiName = toASCII(cleaned);
-            return `${asciiName} (${league})`;
+        const findHeader = (row) => {
+          const norm = row.map((h) => (typeof h === "string" ? h.trim().toLowerCase() : String(h ?? "").toLowerCase()));
+          let p = -1, s = -1;
+          norm.forEach((v, i) => {
+            const vComp = v.replace(/\s+/g, "");
+            if (p === -1 && vComp.includes("player")) p = i;
+            if (s === -1 && vComp.includes("sport")) s = i;
           });
-
-          players.forEach((p) => {
-            if (!colOrder.includes(p)) colOrder.push(p);
-          });
-
-          for (let r = 1; r < aoa.length; r++) {
-            const row = aoa[r];
-            if (!row || !row[0]) continue;
-            const date = normalizeDate(row[0]);
-            if (!date) continue;
-            if (!rowMap.has(date)) rowMap.set(date, { Date: date });
-            const rec = rowMap.get(date);
-            players.forEach((p, i) => {
-              rec[p] = row[i + 1] ?? null;
-            });
-          }
+          return { p, s };
         };
 
-        leagues.forEach((l) => addSheet(l, l));
+        for (let i = 0; i < Math.min(5, aoa.length); i++) {
+          const { p, s } = findHeader(aoa[i]);
+          if (p !== -1 && s !== -1) {
+            headerRowIdx = i;
+            playerCol = p;
+            sportCol = s;
+            break;
+          }
+        }
+        if (playerCol === -1 || sportCol === -1) {
+          throw new Error("Could not locate 'Player' and 'Sport' columns in Google_Trends_Ranks.");
+        }
 
-        const mergedRows = [...rowMap.values()].sort((a, b) =>
-          a.Date.localeCompare(b.Date)
-        );
+        const headers = aoa[headerRowIdx];
+
+        // Month columns = everything after the Player/Sport columns
+        let firstMonthCol = Math.min(playerCol, sportCol) + 1;
+        while (firstMonthCol < headers.length && [playerCol, sportCol].includes(firstMonthCol)) {
+          firstMonthCol++;
+        }
+
+        // Build a list of [colIndex, isoDate] for all month columns
+        const monthCols = [];
+        for (let c = firstMonthCol; c < headers.length; c++) {
+          const label = headers[c];
+          const iso = parseMonthHeader(label);
+          if (iso) monthCols.push([c, iso]);
+        }
+        if (!monthCols.length) {
+          throw new Error("No monthly date columns recognized in Google_Trends_Ranks header.");
+        }
+
+        const colOrder = ["Date"];
+        const rowMap = new Map(); // key: ISO "YYYY-MM-DD" => { Date, "Player (LEAGUE)": rank }
+
+        // Iterate player rows
+        for (let r = headerRowIdx + 1; r < aoa.length; r++) {
+          const row = aoa[r];
+          if (!row) continue;
+
+          const playerRaw = (row[playerCol] ?? "").toString().trim();
+          const sportRaw = (row[sportCol] ?? "").toString().trim();
+          if (!playerRaw) continue;
+
+          // Clean name and attach league
+          const cleanedName = toASCII(playerRaw.replace(/\s*\([^)]*\)\s*$/g, "").trim());
+          const league = sportToLeague(sportRaw); // "NFL" | "NBA" | "MLB" | ""
+          const label = league ? `${cleanedName} (${league})` : cleanedName;
+
+          if (!colOrder.includes(label)) colOrder.push(label);
+
+          // Values per month
+          for (const [cIdx, iso] of monthCols) {
+            const v = toFiniteNumber(row[cIdx]);
+            if (v == null) continue;
+            if (!rowMap.has(iso)) rowMap.set(iso, { Date: iso });
+            const rec = rowMap.get(iso);
+            rec[label] = v;
+          }
+        }
+
+        const mergedRows = [...rowMap.values()].sort((a, b) => a.Date.localeCompare(b.Date));
 
         setColumns(colOrder);
         setRows(mergedRows);
       } catch (e) {
-        setError(e.message);
+        setError(e.message || String(e));
       }
     })();
   }, []);
@@ -84,7 +129,6 @@ export default function Research() {
         const buf = await res.arrayBuffer();
         const wb = XLSX.read(buf, { type: "array" });
 
-        // Use the first sheet by default
         const firstSheet = wb.SheetNames[0];
         const ws = wb.Sheets[firstSheet];
         if (!ws) throw new Error("Key_Player_Returns sheet not found.");
@@ -92,7 +136,7 @@ export default function Research() {
         const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
         if (!aoa.length) throw new Error("Key_Player_Returns sheet is empty.");
 
-        // Find header row with necessary columns
+        // Find columns
         let headerRowIdx = 0;
         let playerCol = -1;
         let techCol = -1;
@@ -136,17 +180,15 @@ export default function Research() {
           const player = (row[playerCol] ?? "").toString().trim();
           if (!player) continue;
 
-          // Technical score
           const rawTech = techCol !== -1 ? toFiniteNumber(row[techCol]) : null;
           if (rawTech != null) tempTech.push({ player, raw: rawTech });
 
-          // RS values
           const rs3 = rs3Col !== -1 ? toFiniteNumber(row[rs3Col]) : null;
           const rs12 = rs12Col !== -1 ? toFiniteNumber(row[rs12Col]) : null;
           if (rs3 != null && rs12 != null) tempRS.push({ player, rs3, rs12 });
         }
 
-        // Build scaled technical scores 0–100 (100 = best)
+        // Scaled technical scores 0–100
         let scaledTech = [];
         if (tempTech.length) {
           const vals = tempTech.map((d) => d.raw);
@@ -163,95 +205,17 @@ export default function Research() {
 
         setTechScores(scaledTech);
         setRsPoints(tempRS);
-      } catch (e) {
-        console.warn(e);
+      } catch {
         setTechScores([]);
         setRsPoints([]);
       }
     })();
   }, []);
 
-  // --- Convert "<" strings → 0, parse numbers ---
-  const toNum = (v) => {
-    if (v == null) return null;
-    if (typeof v === "number") return v;
-    if (typeof v === "string") {
-      const t = v.trim();
-      if (t.startsWith("<")) return 0;
-      const n = Number(t.replace(/,/g, ""));
-      return Number.isFinite(n) ? n : null;
-    }
-    return null;
-  };
+  // With monthly ranks, pass straight through as "rankedRows"
+  const rankedRows = rows;
 
-  // --- Compute weekly 52w − 156w diffs for each player (week-varying) ---
-  const diffRows = useMemo(() => {
-    if (!rows.length || !columns.length) return [];
-    return rows.map((r, rowIdx) => {
-      const out = { Date: r.Date };
-      for (const col of columns) {
-        if (col === "Date") continue;
-        const seriesUpToNow = rows.slice(0, rowIdx + 1).map((rr) => toNum(rr[col]));
-        const avgLastN = (arr, n) => {
-          const slice = arr.slice(-n).filter((x) => x != null);
-          if (!slice.length) return 0;
-          return slice.reduce((a, b) => a + b, 0) / slice.length;
-        };
-        const avg52 = avgLastN(seriesUpToNow, 52);
-        const avg156 = avgLastN(seriesUpToNow, 156);
-        out[col] = avg52 - avg156;
-      }
-      return out;
-    });
-  }, [rows, columns]);
-
-  // --- Rank within each league per week based on diffs (scale 1–100, week-varying) ---
-  const rankedRows = useMemo(() => {
-    if (!diffRows.length || !columns.length) return [];
-    return diffRows.map((r) => {
-      const out = { Date: r.Date };
-      const leagueVals = { NBA: [], MLB: [], NFL: [] };
-
-      for (const col of columns) {
-        if (col === "Date") continue;
-        const m = col.match(/\((NBA|MLB|NFL)\)$/);
-        if (!m) continue;
-        const lg = m[1];
-        const val = r[col];
-        if (val != null && Number.isFinite(val)) leagueVals[lg].push(val);
-      }
-
-      const leagueStats = {};
-      for (const lg of ["NBA", "MLB", "NFL"]) {
-        if (leagueVals[lg].length) {
-          leagueStats[lg] = {
-            min: Math.min(...leagueVals[lg]),
-            max: Math.max(...leagueVals[lg]),
-          };
-        } else {
-          leagueStats[lg] = { min: 0, max: 0 };
-        }
-      }
-
-      for (const col of columns) {
-        if (col === "Date") continue;
-        const m = col.match(/\((NBA|MLB|NFL)\)$/);
-        if (!m) continue;
-        const lg = m[1];
-        const { min, max } = leagueStats[lg];
-        const val = r[col];
-        if (!Number.isFinite(val) || max === min) {
-          out[col] = 50; // neutral if no spread / no data
-        } else {
-          out[col] = Math.round(1 + ((val - min) / (max - min)) * 99);
-        }
-      }
-
-      return out;
-    });
-  }, [diffRows, columns]);
-
-  // Build latest Google Trends rank per player (name without "(LEAGUE)")
+  // Latest Google Trends rank per player (name without "(LEAGUE)")
   const latestRankMap = useMemo(() => {
     if (!rankedRows.length) return new Map();
     const latest = rankedRows[rankedRows.length - 1] || {};
@@ -265,22 +229,17 @@ export default function Research() {
     return map;
   }, [rankedRows, columns]);
 
-  // Technical list with scaled score (0–100)
-  const techScaledList = useMemo(() => {
-    return techScores.map((d) => ({
-      player: d.player,
-      techScaled: d.scaled0to100, // 0–100, 100 best
-    }));
-  }, [techScores]);
+  const techScaledList = useMemo(
+    () => techScores.map((d) => ({ player: d.player, techScaled: d.scaled0to100 })),
+    [techScores]
+  );
 
-  // Tech (0–100) vs Google Trends Rank (1–100) dataset (players present in both)
   const techVsTrendsScaled = useMemo(() => {
     const out = [];
     for (const t of techScaledList) {
       const key = toASCII(t.player).toLowerCase();
       let g = latestRankMap.get(key);
       if (!Number.isFinite(g)) {
-        // fuzzy startsWith match if exact key not found
         for (const [k, v] of latestRankMap.entries()) {
           if (k.startsWith(key) && Number.isFinite(v)) {
             g = v;
@@ -293,14 +252,9 @@ export default function Research() {
     return out;
   }, [techScaledList, latestRankMap]);
 
-  // --- Average(Tech, Trends) vs 3mo RS dataset ---
   const avgScoreVsRS3 = useMemo(() => {
     if (!techVsTrendsScaled.length || !rsPoints.length) return [];
-    const rsMap = new Map();
-    for (const r of rsPoints) {
-      const key = toASCII(r.player).toLowerCase();
-      rsMap.set(key, r.rs3);
-    }
+    const rsMap = new Map(rsPoints.map((r) => [toASCII(r.player).toLowerCase(), r.rs3]));
     const out = [];
     for (const t of techVsTrendsScaled) {
       const key = toASCII(t.player).toLowerCase();
@@ -313,54 +267,79 @@ export default function Research() {
           }
         }
       }
-      if (Number.isFinite(rs3)) {
-        out.push({
-          player: t.player,
-          avgScore: (t.techScaled + t.gRank) / 2,
-          rs3,
-        });
-      }
+      if (Number.isFinite(rs3)) out.push({ player: t.player, avgScore: (t.techScaled + t.gRank) / 2, rs3 });
     }
     return out;
   }, [techVsTrendsScaled, rsPoints]);
 
-  // --- Ranked RS dataset (0–100, 100 best) for the RS vs RS scatter ---
   const rsRankedPoints = useMemo(() => {
     if (!rsPoints.length) return [];
     const by3 = [...rsPoints].sort((a, b) => (b.rs3 ?? -Infinity) - (a.rs3 ?? -Infinity));
     const by12 = [...rsPoints].sort((a, b) => (b.rs12 ?? -Infinity) - (a.rs12 ?? -Infinity));
     const n = rsPoints.length;
-
-    const rankScore = (idx) => {
-      if (n <= 1) return 50;
-      // idx: 0 is best; n-1 is worst -> 100..0
-      return Math.round((1 - idx / (n - 1)) * 100);
-    };
-
+    const rankScore = (idx) => (n <= 1 ? 50 : Math.round((1 - idx / (n - 1)) * 100));
     const r3map = new Map();
     const r12map = new Map();
     by3.forEach((d, i) => r3map.set(d.player, rankScore(i)));
     by12.forEach((d, i) => r12map.set(d.player, rankScore(i)));
-
     return rsPoints
-      .map((d) => ({
-        player: d.player,
-        rs3Rank: r3map.get(d.player) ?? null,
-        rs12Rank: r12map.get(d.player) ?? null,
-      }))
+      .map((d) => ({ player: d.player, rs3Rank: r3map.get(d.player) ?? null, rs12Rank: r12map.get(d.player) ?? null }))
       .filter((d) => Number.isFinite(d.rs3Rank) && Number.isFinite(d.rs12Rank));
   }, [rsPoints]);
 
+  const latestInfoMap = useMemo(() => {
+    if (!rankedRows.length) return new Map();
+    const latest = rankedRows[rankedRows.length - 1] || {};
+    const map = new Map();
+    columns
+      .filter((c) => c !== "Date")
+      .forEach((col) => {
+        const m = col.match(/\s*\((NBA|MLB|NFL)\)\s*$/);
+        const league = m ? m[1] : null;
+        const baseName = col.replace(/\s*\((NBA|MLB|NFL)\)\s*$/, "").trim();
+        const key = toASCII(baseName).toLowerCase();
+        const gRank = Number.isFinite(latest[col]) ? latest[col] : null;
+        if (!map.has(key) || (gRank != null && map.get(key)?.gRank == null)) {
+          map.set(key, { gRank, league });
+        }
+      });
+    return map;
+  }, [rankedRows, columns]);
+
+  const unifiedData = useMemo(() => {
+    const techMap = new Map(techScaledList.map((d) => [toASCII(d.player).toLowerCase(), d.techScaled]));
+    const rsMap = new Map(rsPoints.map((d) => [toASCII(d.player).toLowerCase(), { rs3: d.rs3, rs12: d.rs12 }]));
+    const rsRankMap = new Map(rsRankedPoints.map((d) => [toASCII(d.player).toLowerCase(), { rs3Rank: d.rs3Rank, rs12Rank: d.rs12Rank }]));
+
+    const keys = new Set([...techMap.keys(), ...rsMap.keys(), ...rsRankMap.keys(), ...latestInfoMap.keys()]);
+    const out = [];
+    for (const k of keys) {
+      const techScaled = techMap.get(k) ?? null;
+      const rs = rsMap.get(k) ?? {};
+      const ranks = rsRankMap.get(k) ?? {};
+      const info = latestInfoMap.get(k) ?? {};
+      const gRank = info?.gRank ?? null;
+      const league = info?.league ?? null;
+      const avgScore = Number.isFinite(techScaled) && Number.isFinite(gRank) ? (techScaled + gRank) / 2 : null;
+
+      out.push({
+        player: titleCaseFromKey(k),
+        league,
+        techScaled,
+        gRank,
+        avgScore,
+        rs3: isFinite(rs.rs3) ? rs.rs3 : null,
+        rs12: isFinite(rs.rs12) ? rs.rs12 : null,
+        rs3Rank: ranks.rs3Rank ?? null,
+        rs12Rank: ranks.rs12Rank ?? null,
+      });
+    }
+    return out.filter((d) => [d.techScaled, d.gRank, d.avgScore, d.rs3, d.rs12, d.rs3Rank, d.rs12Rank].some(Number.isFinite));
+  }, [techScaledList, rsPoints, rsRankedPoints, latestInfoMap]);
+
   if (error) {
     return (
-      <div
-        style={{
-          color: burntOrange,
-          border: `2px solid ${burntOrange}`,
-          padding: 12,
-          borderRadius: 8,
-        }}
-      >
+      <div style={{ color: burntOrange, border: `2px solid ${burntOrange}`, padding: 12, borderRadius: 8 }}>
         {error}
       </div>
     );
@@ -368,14 +347,7 @@ export default function Research() {
 
   if (!rows.length) {
     return (
-      <div
-        style={{
-          padding: 12,
-          color: burntOrange,
-          border: `2px dashed ${burntOrange}`,
-          borderRadius: 8,
-        }}
-      >
+      <div style={{ padding: 12, color: burntOrange, border: `2px dashed ${burntOrange}`, borderRadius: 8 }}>
         Loading Google Trends data…
       </div>
     );
@@ -418,7 +390,7 @@ export default function Research() {
         Technical and Sentiment Research
       </h1>
 
-      {/* 1) Avg(Tech, Trends) vs 3mo RS */}
+      {/* --- Unified Scatterplot --- */}
       <div
         style={{
           marginTop: 6,
@@ -429,106 +401,24 @@ export default function Research() {
           background: "#fff",
         }}
       >
-        <h2
-          style={{
-            color: burntOrange,
-            margin: "0 0 10px 0",
-            fontSize: 20,
-            fontWeight: 800,
-          }}
-        >
-          Composite Rank vs 3-Month Relative Strength
+        <h2 style={{ color: burntOrange, margin: "0 0 10px 0", fontSize: 20, fontWeight: 800 }}>
+          Unified Scatter — Choose X/Y and League
         </h2>
 
-        {avgScoreVsRS3.length ? (
-          <ScatterAvgScoreVsRS3
-            data={avgScoreVsRS3}
-            burntOrange={burntOrange}
-            width={1280}
-            height={400}
-          />
-        ) : (
-          <div style={{ fontSize: 13, color: "#666" }}>
-            Could not compute overlap between Technical/Trends and 3-Month RS.
-          </div>
-        )}
-      </div>
+        {/* ⬇︎ Now full-width & responsive */}
+        <UnifiedScatter data={unifiedData} burntOrange={burntOrange} />
 
-      {/* 2) Technical vs Google Trends */}
-      <div
-        style={{
-          marginTop: 12,
-          paddingTop: 12,
-          paddingBottom: 8,
-          borderTop: `2px solid ${burntOrange}`,
-          borderBottom: `2px solid ${burntOrange}`,
-          background: "#fff",
-        }}
-      >
-        <h2
-          style={{
-            color: burntOrange,
-            margin: "0 0 10px 0",
-            fontSize: 20,
-            fontWeight: 800,
-          }}
-        >
-          Technical Rank (0–100) vs Google Trends Rank
-        </h2>
-
-        {techVsTrendsScaled.length ? (
-          <ScatterTechScoreVsTrends
-            data={techVsTrendsScaled}
-            burntOrange={burntOrange}
-            width={1280}
-            height={420}
-          />
-        ) : (
-          <div style={{ fontSize: 13, color: "#666" }}>
-            Insufficient overlap between Technical data and Google Trends names.
-          </div>
-        )}
-
-        <div style={{ fontSize: 12, color: "#666", marginTop: 6 }}>
-          Note: Technical is a 0–100 score (100 = strongest). Google Trends Rank is the
-          latest-week 1–100 scale (higher = better).
+        <div style={{ fontSize: 12, color: "#666", marginTop: 6, whiteSpace: "pre-wrap" }}>
+{`Variables available:
+- Technical Rank (0–100; higher = better)
+- Google Trends Rank (latest, 1–100; higher = better)
+- Composite Rank = avg(Technical, Google Trends) (0–100)
+- 3-Month RS (raw)
+- 12-Month RS (raw)
+- 3-Month RS Rank (0–100; higher = better)
+- 12-Month RS Rank (0–100; higher = better)
+`}
         </div>
-      </div>
-
-      {/* 3) 3-Month RS vs 12-Month RS — RANKS (0–100) */}
-      <div
-        style={{
-          marginTop: 12,
-          paddingTop: 12,
-          paddingBottom: 8,
-          borderTop: `2px solid ${burntOrange}`,
-          borderBottom: `2px solid ${burntOrange}`,
-          background: "#fff",
-        }}
-      >
-        <h2
-          style={{
-            color: burntOrange,
-            margin: "0 0 10px 0",
-            fontSize: 20,
-            fontWeight: 800,
-          }}
-        >
-          3-Month Relative Strength vs 12-Month Relative Strength (Ranks 0–100, 100 = best)
-        </h2>
-
-        {rsRankedPoints.length ? (
-          <ScatterRS3v12Ranked
-            data={rsRankedPoints}
-            burntOrange={burntOrange}
-            width={1280}
-            height={460}
-          />
-        ) : (
-          <div style={{ fontSize: 13, color: "#666" }}>
-            Relative Strength (3mo/12mo) not available in file.
-          </div>
-        )}
       </div>
 
       {/* CHARTS ONLY (table removed for performance) */}
@@ -540,27 +430,13 @@ export default function Research() {
         burntOrange={burntOrange}
       />
 
-      {/* Disclosure below the charts */}
-      <div
-        style={{
-          marginTop: 8,
-          fontSize: 12,
-          color: "#666",
-          textAlign: "left",
-          whiteSpace: "pre-wrap",
-        }}
-      >
-        {
-          "Source:  Underlying data sourced from Google Trends.  Calculations by Longhorn Cards convert the data to rankings based on 52- and 156-week moving averages."
-        }
+      {/* Disclosure */}
+      <div style={{ marginTop: 8, fontSize: 12, color: "#666", textAlign: "left", whiteSpace: "pre-wrap" }}>
+        {"Source:  Underlying data sourced from Google Trends.  Calculations by Longhorn Cards transform the monthly data into player series."}
       </div>
 
-      {/* Box-Plot moved to the bottom, just above the Home button */}
-      <BoxPlotAllPlayers
-        rankedRows={rankedRows}
-        columns={columns}
-        burntOrange={burntOrange}
-      />
+      {/* ⬇︎ Box Plot now full-width & responsive */}
+      <BoxPlotAllPlayers rankedRows={rankedRows} columns={columns} burntOrange={burntOrange} />
 
       {/* Bottom Home Button */}
       <div style={{ marginTop: 16 }}>
@@ -585,37 +461,205 @@ export default function Research() {
   );
 }
 
-/** --- Line & Bar Charts Subcomponent (pure SVG, no external deps) --- **/
-function ChartSection({
-  rankedRows,
-  columns,
-  selectedPlayers,
-  setSelectedPlayers,
-  burntOrange,
+/** --- Multi-Select (searchable, max N) --- **/
+function MultiSelect({
+  options,
+  selected,
+  onChange,
+  max = 5,
+  color = "#BF5700",
+  placeholder = "Search & select players…",
 }) {
-  const [chartLeague] = useState("All"); // reserved for future filtering
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const wrapRef = useRef(null);
 
-  // Helpers to parse "Name (LEAGUE)"
+  // Close on outside click
+  useEffect(() => {
+    const onDocClick = (e) => {
+      if (!wrapRef.current) return;
+      if (!wrapRef.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, []);
+
+  const norm = (s) => (s || "").toLowerCase();
+  const filtered = useMemo(() => {
+    const q = norm(query);
+    const base = q ? options.filter((o) => norm(o).includes(q)) : options;
+    // keep selected at top, then matches
+    const sel = new Set(selected);
+    return base.filter((o) => sel.has(o)).concat(base.filter((o) => !sel.has(o))).slice(0, 500);
+  }, [options, selected, query]);
+
+  const atLimit = selected.length >= max;
+
+  const toggle = (opt) => {
+    if (selected.includes(opt)) {
+      onChange(selected.filter((s) => s !== opt));
+    } else if (!atLimit) {
+      onChange([...selected, opt]);
+    }
+  };
+  const remove = (opt) => onChange(selected.filter((s) => s !== opt));
+
+  return (
+    <div ref={wrapRef} style={{ position: "relative" }}>
+      {/* Combobox */}
+      <div
+        onClick={() => setOpen(true)}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          flexWrap: "wrap",
+          minHeight: 40,
+          width: "100%",
+          border: `1px solid ${color}`,
+          borderRadius: 10,
+          padding: "6px 10px",
+          background: "#fff",
+          cursor: "text",
+        }}
+      >
+        {/* Selected pills */}
+        {selected.map((s) => (
+          <span
+            key={s}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              borderRadius: 999,
+              border: `1px solid ${color}`,
+              background: color,
+              color: "#fff",
+              fontSize: 12,
+              fontWeight: 600,
+              padding: "4px 8px",
+            }}
+          >
+            {s}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                remove(s);
+              }}
+              aria-label={`Remove ${s}`}
+              style={{
+                border: "none",
+                background: "transparent",
+                color: "#fff",
+                fontWeight: 700,
+                cursor: "pointer",
+                lineHeight: 1,
+              }}
+            >
+              ×
+            </button>
+          </span>
+        ))}
+
+        {/* Search input */}
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onFocus={() => setOpen(true)}
+          placeholder={selected.length ? "" : placeholder}
+          style={{
+            flex: 1,
+            minWidth: 140,
+            border: "none",
+            outline: "none",
+            fontSize: 13,
+            padding: "4px 2px",
+          }}
+        />
+      </div>
+
+      {/* Dropdown */}
+      {open && (
+        <div
+          role="listbox"
+          aria-multiselectable="true"
+          style={{
+            position: "absolute",
+            zIndex: 20,
+            top: "calc(100% + 6px)",
+            left: 0,
+            right: 0,
+            maxHeight: 280,
+            overflowY: "auto",
+            background: "#fff",
+            border: "1px solid #ddd",
+            borderRadius: 10,
+            boxShadow: "0 8px 20px rgba(0,0,0,0.08)",
+          }}
+        >
+          {filtered.length === 0 && (
+            <div style={{ padding: 10, fontSize: 12, color: "#777" }}>No matches</div>
+          )}
+
+          {filtered.map((opt) => {
+            const isSel = selected.includes(opt);
+            const disabled = !isSel && atLimit;
+            return (
+              <button
+                key={opt}
+                type="button"
+                onClick={() => toggle(opt)}
+                disabled={disabled}
+                style={{
+                  width: "100%",
+                  textAlign: "left",
+                  padding: "8px 10px",
+                  background: isSel ? "#f7f7f7" : "#fff",
+                  border: "none",
+                  borderBottom: "1px solid #f1f1f1",
+                  cursor: disabled ? "not-allowed" : "pointer",
+                  color: disabled ? "#bbb" : "#333",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  fontSize: 13,
+                }}
+              >
+                <input type="checkbox" checked={isSel} readOnly style={{ pointerEvents: "none" }} />
+                <span>{opt}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Helper row */}
+      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
+        <small style={{ color: "#777" }}>{selected.length}/{max} selected</small>
+        {atLimit && <small style={{ color, fontWeight: 700 }}>Limit reached</small>}
+      </div>
+    </div>
+  );
+}
+
+/** --- Line & Bar Charts Subcomponent (uses MultiSelect) --- **/
+function ChartSection({ rankedRows, columns, selectedPlayers, setSelectedPlayers, burntOrange }) {
+  const [chartLeague] = useState("All"); // reserved for future filtering
   const parseCol = (c) => {
     const m = c.match(/^(.*)\s\((NBA|MLB|NFL)\)$/);
     return { name: (m?.[1] || c).trim(), league: m?.[2] || "" };
   };
-  const leagueOrder = { MLB: 0, NBA: 1, NFL: 2 }; // alphabetical by sport
+  const leagueOrder = { MLB: 0, NBA: 1, NFL: 2 };
 
-  // Visible & sorted player options for the chart selector
   const playerOptions = useMemo(() => {
     const all = columns.filter((c) => c !== "Date");
-    const base =
-      chartLeague === "All"
-        ? all
-        : all.filter((c) => c.endsWith(`(${chartLeague})`));
-
+    const base = chartLeague === "All" ? all : all.filter((c) => c.endsWith(`(${chartLeague})`));
     const sorted = [...base].sort((a, b) => {
       const pa = parseCol(a);
       const pb = parseCol(b);
       if (chartLeague === "All") {
-        const cmpL =
-          (leagueOrder[pa.league] ?? 99) - (leagueOrder[pb.league] ?? 99);
+        const cmpL = (leagueOrder[pa.league] ?? 99) - (leagueOrder[pb.league] ?? 99);
         if (cmpL !== 0) return cmpL;
       }
       return pa.name.localeCompare(pb.name);
@@ -623,21 +667,16 @@ function ChartSection({
     return sorted;
   }, [columns, chartLeague]);
 
-  // Keep selections valid for current chart filter; if none remain, auto-suggest top 3
+  // Keep selections valid; if empty, auto-suggest top 3 latest
   useEffect(() => {
     if (!rankedRows.length) return;
-
     setSelectedPlayers((prev) => {
       const stillValid = prev.filter((p) => playerOptions.includes(p));
       if (stillValid.length > 0) return stillValid;
-
       const last = rankedRows[rankedRows.length - 1] || {};
-      const candidates = playerOptions
-        .map((c) => ({ col: c, val: last[c] }))
-        .filter((e) => Number.isFinite(e.val));
+      const candidates = playerOptions.map((c) => ({ col: c, val: last[c] })).filter((e) => Number.isFinite(e.val));
       candidates.sort((a, b) => b.val - a.val);
-      const suggestions = candidates.slice(0, 3).map((e) => e.col);
-      return suggestions;
+      return candidates.slice(0, 3).map((e) => e.col);
     });
   }, [playerOptions, rankedRows, setSelectedPlayers]);
 
@@ -650,18 +689,7 @@ function ChartSection({
   const n = rankedRows.length;
   const xLine = (i) => (n <= 1 ? 0 : (i / (n - 1)) * innerW);
   const yRank = (v) => innerH - (Math.max(0, Math.min(100, v)) / 100) * innerH;
-  const COLORS = [
-    "#1f77b4",
-    "#ff7f0e",
-    "#2ca02c",
-    "#d62728",
-    "#9467bd",
-    "#8c564b",
-    "#e377c2",
-    "#7f7f7f",
-    "#bcbd22",
-    "#17becf",
-  ];
+  const COLORS = ["#1f77b4","#ff7f0e","#2ca02c","#d62728","#9467bd","#8c564b","#e377c2","#7f7f7f","#bcbd22","#17becf"];
 
   const linePaths = useMemo(() => {
     const makePathD = (col) => {
@@ -675,11 +703,7 @@ function ChartSection({
       }
       return d;
     };
-    return selectedPlayers.map((col, idx) => ({
-      col,
-      d: makePathD(col),
-      color: COLORS[idx % COLORS.length],
-    }));
+    return selectedPlayers.map((col, idx) => ({ col, d: makePathD(col), color: COLORS[idx % COLORS.length] }));
   }, [selectedPlayers, rankedRows, n]);
 
   const latest = rankedRows[rankedRows.length - 1] || {};
@@ -695,120 +719,46 @@ function ChartSection({
   const barX = (i) => i * band + (band - barW) / 2;
 
   return (
-    <div
-      style={{
-        padding: "12px",
-        borderTop: `1px solid ${burntOrange}`,
-        background: "#fff",
-        marginTop: 12,
-      }}
-    >
-      {/* Player selector */}
-      <div
-        style={{
-          display: "flex",
-          gap: 8,
-          alignItems: "center",
-          flexWrap: "wrap",
-          marginBottom: 8,
-        }}
-      >
-        <span style={{ color: burntOrange, fontWeight: 700 }}>
-          Compare up to 5 players:
-        </span>
-
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-            gap: 6,
-            width: "100%",
-            overflow: "visible",
-          }}
-        >
-          {columns
-            .filter((c) => c !== "Date")
-            .sort((a, b) => a.localeCompare(b))
-            .map((p) => {
-              const active = selectedPlayers.includes(p);
-              const disabled = !active && selectedPlayers.length >= 5;
-              return (
-                <button
-                  key={p}
-                  onClick={() => {
-                    if (disabled) return;
-                    if (active)
-                      setSelectedPlayers((prev) => prev.filter((x) => x !== p));
-                    else setSelectedPlayers((prev) => [...prev, p]);
-                  }}
-                  disabled={disabled}
-                  title={disabled ? "Limit: 5 players" : ""}
-                  style={{
-                    border: `1px solid ${burntOrange}`,
-                    background: active ? burntOrange : "#fff",
-                    color: active ? "#fff" : burntOrange,
-                    padding: "6px 10px",
-                    borderRadius: 999,
-                    cursor: disabled ? "not-allowed" : "pointer",
-                    fontSize: 12,
-                    fontWeight: 600,
-                    opacity: disabled ? 0.5 : 1,
-                    textAlign: "center",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {p}
-                </button>
-              );
-            })}
+    <div style={{ padding: "12px", borderTop: `1px solid ${burntOrange}`, background: "#fff", marginTop: 12 }}>
+      {/* Multi-Selector */}
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 10 }}>
+        <span style={{ color: burntOrange, fontWeight: 700 }}>Choose up to 5 players:</span>
+        <div style={{ flex: 1, minWidth: 260 }}>
+          <MultiSelect
+            options={playerOptions}
+            selected={selectedPlayers}
+            onChange={setSelectedPlayers}
+            max={5}
+            color={burntOrange}
+            placeholder="Search & select players…"
+          />
         </div>
       </div>
 
       {/* Legend */}
       {selectedPlayers.length > 0 && (
-        <div
-          style={{
-            display: "flex",
-            gap: 12,
-            alignItems: "center",
-            flexWrap: "wrap",
-            margin: "6px 0 8px 0",
-          }}
-        >
-          {linePaths.map((p) => (
-            <div key={p.col} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span
-                style={{
-                  display: "inline-block",
-                  width: 18,
-                  height: 4,
-                  background: p.color,
-                  borderRadius: 2,
-                }}
-              />
-              <span style={{ fontSize: 12 }}>{p.col}</span>
+        <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", margin: "6px 0 8px 0" }}>
+          {selectedPlayers.map((col, idx) => (
+            <div key={col} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ display: "inline-block", width: 18, height: 4, background: COLORS[idx % COLORS.length], borderRadius: 2 }} />
+              <span style={{ fontSize: 12 }}>{col}</span>
             </div>
           ))}
         </div>
       )}
 
-      {/* Charts side-by-side (line on left, bar on right) */}
+      {/* Line + Bar */}
       <div style={{ display: "flex", gap: 16 }}>
-        {/* Line Chart */}
+        {/* Line */}
         <svg width={WIDTH} height={HEIGHT} role="img" aria-label="Player comparison line chart">
           <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
-            {/* y axis */}
             <line x1={0} y1={0} x2={0} y2={innerH} stroke="#ccc" />
             {[0, 20, 40, 60, 80, 100].map((t) => (
               <g key={t} transform={`translate(0,${yRank(t)})`}>
                 <line x1={0} x2={innerW} y1={0} y2={0} stroke="#eee" />
-                <text x={-8} y={3} textAnchor="end" fontSize="10" fill="#777">
-                  {t}
-                </text>
+                <text x={-8} y={3} textAnchor="end" fontSize="10" fill="#777">{t}</text>
               </g>
             ))}
-
-            {/* x axis */}
             <line x1={0} y1={innerH} x2={innerW} y2={innerH} stroke="#ccc" />
             {Array.from({ length: 8 }).map((_, k) => {
               const i = Math.round((k / 7) * (n - 1));
@@ -816,41 +766,27 @@ function ChartSection({
               return (
                 <g key={i} transform={`translate(${xLine(i)},${innerH})`}>
                   <line y1={0} y2={4} stroke="#ccc" />
-                  <text y={16} textAnchor="middle" fontSize="10" fill="#777">
-                    {date}
-                  </text>
+                  <text y={16} textAnchor="middle" fontSize="10" fill="#777">{date}</text>
                 </g>
               );
             })}
-
-            {/* series paths */}
             {linePaths.map((p) => (
-              <path
-                key={p.col}
-                d={p.d}
-                fill="none"
-                stroke={p.color}
-                strokeWidth={2}
-                vectorEffect="non-scaling-stroke"
-              />
+              <path key={p.col} d={p.d} fill="none" stroke={p.color} strokeWidth={2} vectorEffect="non-scaling-stroke" />
             ))}
           </g>
         </svg>
 
-        {/* Bar Chart: most recent values for selected players */}
-        <svg width={WIDTH} height={HEIGHT} role="img" aria-label="Most recent weekly ranks (bar chart)">
+        {/* Bar */}
+        <svg width={WIDTH} height={HEIGHT} role="img" aria-label="Most recent monthly ranks (bar chart)">
           <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
             <line x1={0} y1={0} x2={0} y2={innerH} stroke="#ccc" />
             {[0, 20, 40, 60, 80, 100].map((t) => (
               <g key={t} transform={`translate(0,${yRank(t)})`}>
                 <line x1={0} x2={innerW} y1={0} y2={0} stroke="#eee" />
-                <text x={-8} y={3} textAnchor="end" fontSize="10" fill="#777">
-                  {t}
-                </text>
+                <text x={-8} y={3} textAnchor="end" fontSize="10" fill="#777">{t}</text>
               </g>
             ))}
             <line x1={0} y1={innerH} x2={innerW} y2={innerH} stroke="#ccc" />
-
             {barData.map((b, i) => {
               const x = barX(i);
               const y = yRank(b.value);
@@ -858,24 +794,8 @@ function ChartSection({
               return (
                 <g key={b.col} transform={`translate(${x},0)`}>
                   <rect x={0} y={y} width={barW} height={h} fill={b.color} />
-                  <text
-                    x={barW / 2}
-                    y={y - 4}
-                    textAnchor="middle"
-                    fontSize="10"
-                    fill="#333"
-                  >
-                    {Math.round(b.value)}
-                  </text>
-                  <text
-                    x={barW / 2}
-                    y={innerH + 14}
-                    textAnchor="middle"
-                    fontSize="10"
-                    fill="#777"
-                  >
-                    {b.col}
-                  </text>
+                  <text x={barW / 2} y={y - 4} textAnchor="middle" fontSize="10" fill="#333">{Math.round(b.value)}</text>
+                  <text x={barW / 2} y={innerH + 14} textAnchor="middle" fontSize="10" fill="#777">{b.col}</text>
                 </g>
               );
             })}
@@ -886,329 +806,247 @@ function ChartSection({
   );
 }
 
-/** --- Utility: simple OLS line (slope & intercept) --- **/
-function olsLine(points, getX, getY) {
-  const xs = points.map(getX);
-  const ys = points.map(getY);
-  const n = points.length || 1;
-  const mean = (a) => a.reduce((s, v) => s + v, 0) / n;
-  const mx = mean(xs);
-  const my = mean(ys);
-  let num = 0, den = 0;
-  for (let i = 0; i < n; i++) {
-    const dx = xs[i] - mx;
-    num += dx * (ys[i] - my);
-    den += dx * dx;
-  }
-  const m = den === 0 ? 0 : num / den;
-  const b = my - m * mx;
-  return { m, b };
-}
+/** --- Unified Scatter (FULL-WIDTH responsive) --- **/
+function UnifiedScatter({ data, burntOrange }) {
+  const VARS = [
+    { key: "techScaled", label: "Technical Rank (0–100)", fixed: [0, 100] },
+    { key: "gRank", label: "Google Trends Rank (1–100)", fixed: [0, 100] },
+    { key: "avgScore", label: "Composite Rank (avg of Technical & Google)", fixed: [0, 100] },
+    { key: "rs3", label: "3-Month RS (raw)" },
+    { key: "rs12", label: "12-Month RS (raw)" },
+    { key: "rs3Rank", label: "3-Month RS Rank (0–100)", fixed: [0, 100] },
+    { key: "rs12Rank", label: "12-Month RS Rank (0–100)", fixed: [0, 100] },
+  ];
 
-/** --- SCATTER: 3mo RS Rank vs 12mo RS Rank (0–100; 100 best) --- **/
-function ScatterRS3v12Ranked({ data, burntOrange, width = 1280, height = 460 }) {
-  // data: [{ player, rs3Rank, rs12Rank }]
-  const M = { top: 32, right: 24, bottom: 52, left: 64 };
-  const W = width - M.left - M.right;
-  const H = height - M.top - M.bottom;
+  const [xKey, setXKey] = useState("techScaled");
+  const [yKey, setYKey] = useState("gRank");
+  const [league, setLeague] = useState("All");
 
-  const x0 = 0, x1 = 100;
-  const y0 = 0, y1 = 100;
+  // Measure container width
+  const [wrapRef, widthPx] = useContainerWidth(600); // min width
+  const svgW = widthPx;                               // full container width
+  const svgH = Math.max(420, Math.round(svgW * 0.45)); // scale height with width
 
-  const x = (v) => ((v - x0) / (x1 - x0)) * W;
-  const y = (v) => H - ((v - y0) / (y1 - y0)) * H;
-
-  const xTicks = [0, 20, 40, 60, 80, 100];
-  const yTicks = [0, 20, 40, 60, 80, 100];
-
-  // OLS on ranked data
-  const { m, b } = olsLine(data, (d) => d.rs3Rank, (d) => d.rs12Rank);
-
-  return (
-    <svg width={width} height={height} role="img" aria-label="3-month RS Rank vs 12-month RS Rank">
-      <g transform={`translate(${M.left},${M.top})`}>
-        {/* Quadrant backgrounds (screen-based): TL=blue, TR=green, BL=red, BR=yellow */}
-        <rect x={0} y={0} width={W / 2} height={H / 2} fill="blue" opacity="0.08" />
-        <rect x={W / 2} y={0} width={W / 2} height={H / 2} fill="green" opacity="0.08" />
-        <rect x={0} y={H / 2} width={W / 2} height={H / 2} fill="red" opacity="0.08" />
-        <rect x={W / 2} y={H / 2} width={W / 2} height={H / 2} fill="yellow" opacity="0.12" />
-
-        {/* Axes */}
-        <line x1={0} y1={H} x2={W} y2={H} stroke="#ccc" />
-        <line x1={0} y1={0} x2={0} y2={H} stroke="#ccc" />
-
-        {xTicks.map((t, i) => (
-          <g key={`xt-${i}`} transform={`translate(${x(t)},0)`}>
-            <line y1={0} y2={H} stroke="#eee" />
-            <text y={H + 18} textAnchor="middle" fontSize="11" fill="#777">
-              {t}
-            </text>
-          </g>
-        ))}
-        {yTicks.map((t, i) => (
-          <g key={`yt-${i}`} transform={`translate(0,${y(t)})`}>
-            <line x1={0} x2={W} stroke="#eee" />
-            <text x={-10} y={4} textAnchor="end" fontSize="11" fill="#777">
-              {t}
-            </text>
-          </g>
-        ))}
-
-        {/* Diagonal reference (y=x) */}
-        <line x1={0} y1={y(x0)} x2={W} y2={y(x1)} stroke="#ddd" strokeDasharray="4,4" />
-
-        {/* OLS best-fit line */}
-        {Number.isFinite(m) && Number.isFinite(b) && (
-          <line
-            x1={x(x0)}
-            y1={y(m * x0 + b)}
-            x2={x(x1)}
-            y2={y(m * x1 + b)}
-            stroke="#444"
-            strokeDasharray="6,4"
-          />
-        )}
-
-        {data.map((d) => {
-          const cx = x(d.rs3Rank);
-          const cy = y(d.rs12Rank);
-          return (
-            <g key={d.player} transform={`translate(${cx},${cy})`}>
-              <circle r={4} fill={burntOrange} opacity="0.9" />
-              <title>{`${d.player}\n3m RS (rank): ${d.rs3Rank}\n12m RS (rank): ${d.rs12Rank}`}</title>
-            </g>
-          );
-        })}
-
-        {/* Axis labels */}
-        <text x={W / 2} y={H + 36} textAnchor="middle" fontSize="13" fill="#333" fontWeight="700">
-          3-Month Relative Strength (Rank 0–100)
-        </text>
-        <text
-          transform="rotate(-90)"
-          x={-H / 2}
-          y={-50}
-          textAnchor="middle"
-          fontSize="13"
-          fill="#333"
-          fontWeight="700"
-        >
-          12-Month Relative Strength (Rank 0–100)
-        </text>
-      </g>
-    </svg>
+  const filtered = useMemo(() => data.filter((d) => (league === "All" ? true : d.league === league)), [data, league]);
+  const points = useMemo(
+    () => filtered.map((d) => ({ ...d, x: d[xKey], y: d[yKey] })).filter((d) => Number.isFinite(d.x) && Number.isFinite(d.y)),
+    [filtered, xKey, yKey]
   );
-}
 
-/** --- NEW SCATTER: Avg(Tech, Trends) vs 3mo RS with best-fit line + quadrants --- **/
-function ScatterAvgScoreVsRS3({ data, burntOrange, width = 1280, height = 400 }) {
-  // data: [{ player, avgScore (0–100), rs3 }]
-  const M = { top: 26, right: 20, bottom: 48, left: 58 };
-  const W = width - M.left - M.right;
-  const H = height - M.top - M.bottom;
+  const xVar = VARS.find((v) => v.key === xKey) || VARS[0];
+  const yVar = VARS.find((v) => v.key === yKey) || VARS[1];
 
-  const x0 = 0, x1 = 100;
-  const ys = data.map((d) => d.rs3);
-  const yMin = Math.min(...ys);
-  const yMax = Math.max(...ys);
-  const pad = (yMax - yMin) * 0.08 || 1;
-  const y0 = yMin - pad;
-  const y1 = yMax + pad;
+  const xExtent = xVar.fixed ?? autoExtent(points.map((p) => p.x));
+  const yExtent = yVar.fixed ?? autoExtent(points.map((p) => p.y));
 
-  const x = (v) => ((v - x0) / (x1 - x0)) * W;
-  const y = (v) => H - ((v - y0) / (y1 - y0)) * H;
+  const M = { top: 32, right: 20, bottom: 60, left: 72 };
+  const W = svgW - M.left - M.right;
+  const H = svgH - M.top - M.bottom;
 
-  const ticks = (min, max, n = 5) => {
-    if (!isFinite(min) || !isFinite(max) || min === max) return [min];
-    const step = (max - min) / n;
-    return Array.from({ length: n + 1 }, (_, i) => +(min + i * step).toFixed(2));
+  const xScale = (v) => {
+    const [a, b] = xExtent;
+    if (a === b) return W / 2;
+    return ((v - a) / (b - a)) * W;
+  };
+  const yScale = (v) => {
+    const [a, b] = yExtent;
+    if (a === b) return H / 2;
+    return H - ((v - a) / (b - a)) * H;
   };
 
-  const xTicks = [0, 20, 40, 60, 80, 100];
-  const yTicks = ticks(y0, y1, 5);
+  const xTicks = ticksFromExtent(xExtent, 6);
+  const yTicks = ticksFromExtent(yExtent, 6);
 
-  // OLS
-  const { m, b } = olsLine(data, (d) => d.avgScore, (d) => d.rs3);
+  // OLS line
+  const { m, b } = useMemo(() => {
+    const xs = points.map((p) => p.x);
+    const ys = points.map((p) => p.y);
+    const n = xs.length;
+    if (!n) return { m: NaN, b: NaN };
+    const mx = xs.reduce((s, v) => s + v, 0) / n;
+    const my = ys.reduce((s, v) => s + v, 0) / n;
+    let num = 0, den = 0;
+    for (let i = 0; i < n; i++) {
+      const dx = xs[i] - mx;
+      num += dx * (ys[i] - my);
+      den += dx * dx;
+    }
+    const slope = den === 0 ? NaN : num / den;
+    const intercept = Number.isFinite(slope) ? my - slope * mx : NaN;
+    return { m: slope, b: intercept };
+  }, [points]);
+
+  // Label layout
+  const FONT_SIZE = 11;
+  const estWidth = (text) => Math.max(6, Math.round(text.length * FONT_SIZE * 0.55));
+  const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+  const rectsOverlap = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+
+  const labels = useMemo(() => {
+    const initial = points.map((d) => {
+      const sx = xScale(d.x);
+      const sy = yScale(d.y);
+      const w = estWidth(d.player);
+      const h = FONT_SIZE + 2;
+      return { ...d, sx, sy, w, h };
+    });
+
+    initial.sort((a, b) => a.sy - b.sy);
+
+    const placed = [];
+    const results = [];
+    const offsets = [
+      [0, -6], [8, -6], [-8, -6],
+      [0, 8], [10, 0], [-10, 0],
+      [14, -12], [-14, -12], [14, 12], [-14, 12],
+      [0, -14], [0, 14], [18, 0], [-18, 0],
+    ];
+
+    for (const d of initial) {
+      let placedRect = null;
+      let chosen = null;
+
+      for (const [dx, dy] of offsets) {
+        const cx = d.sx + dx;
+        const cy = d.sy + dy;
+
+        const xLeft = clamp(cx - d.w / 2, 0, W - d.w);
+        const yTop = clamp(cy - d.h + 2, 0, H - d.h);
+        const rect = { x: xLeft, y: yTop, w: d.w, h: d.h };
+
+        // keep inside + collision test
+        if (rect.x < 0 || rect.x + rect.w > W || rect.y < 0 || rect.y + rect.h > H) continue;
+        if (placed.some((r) => rectsOverlap(rect, r))) continue;
+
+        placedRect = rect;
+        chosen = { x: xLeft + d.w / 2, y: yTop + d.h - 2 };
+        break;
+      }
+
+      if (!chosen) {
+        const xLeft = clamp(d.sx - d.w / 2, 0, W - d.w);
+        const yTop = clamp(d.sy - d.h + 2, 0, H - d.h);
+        placedRect = { x: xLeft, y: yTop, w: d.w, h: d.h };
+        chosen = { x: xLeft + d.w / 2, y: yTop + d.h - 2 };
+      }
+
+      placed.push(placedRect);
+      results.push({ ...d, tx: chosen.x, ty: chosen.y });
+    }
+
+    return results;
+  }, [points, xScale, yScale, W, H]);
+
+  const xMid = W / 2;
+  const yMid = H / 2;
 
   return (
-    <svg width={width} height={height} role="img" aria-label="Average of Technical & Google Trends vs 3-Month RS">
-      <g transform={`translate(${M.left},${M.top})`}>
-        {/* Quadrant backgrounds (screen-based): TL=blue, TR=green, BL=red, BR=yellow */}
-        <rect x={0} y={0} width={W / 2} height={H / 2} fill="blue" opacity="0.08" />
-        <rect x={W / 2} y={0} width={W / 2} height={H / 2} fill="green" opacity="0.08" />
-        <rect x={0} y={H / 2} width={W / 2} height={H / 2} fill="red" opacity="0.08" />
-        <rect x={W / 2} y={H / 2} width={W / 2} height={H / 2} fill="yellow" opacity="0.12" />
+    <div ref={wrapRef} style={{ width: "100%" }}>
+      {/* Controls */}
+      <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap", marginBottom: 10 }}>
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <label style={{ fontWeight: 700, color: burntOrange }}>X:</label>
+          <select value={xKey} onChange={(e) => setXKey(e.target.value)} style={selectStyle(burntOrange)}>
+            {VARS.map((v) => (
+              <option key={v.key} value={v.key}>{v.label}</option>
+            ))}
+          </select>
+        </div>
 
-        {/* Axes */}
-        <line x1={0} y1={H} x2={W} y2={H} stroke="#ccc" />
-        <line x1={0} y1={0} x2={0} y2={H} stroke="#ccc" />
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <label style={{ fontWeight: 700, color: burntOrange }}>Y:</label>
+          <select value={yKey} onChange={(e) => setYKey(e.target.value)} style={selectStyle(burntOrange)}>
+            {VARS.map((v) => (
+              <option key={v.key} value={v.key}>{v.label}</option>
+            ))}
+          </select>
+        </div>
 
-        {xTicks.map((t, i) => (
-          <g key={`xt-${i}`} transform={`translate(${x(t)},0)`}>
-            <line y1={0} y2={H} stroke="#eee" />
-            <text y={H + 16} textAnchor="middle" fontSize="10" fill="#777">
-              {t}
-            </text>
-          </g>
-        ))}
-        {yTicks.map((t, i) => (
-          <g key={`yt-${i}`} transform={`translate(0,${y(t)})`}>
-            <line x1={0} x2={W} stroke="#eee" />
-            <text x={-8} y={3} textAnchor="end" fontSize="10" fill="#777">
-              {t}
-            </text>
-          </g>
-        ))}
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <span style={{ fontWeight: 700, color: burntOrange }}>League:</span>
+          {["All", "MLB", "NBA", "NFL"].map((lg) => (
+            <label key={lg} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <input type="radio" name="leagueFilter" value={lg} checked={league === lg} onChange={() => setLeague(lg)} />
+              {lg}
+            </label>
+          ))}
+        </div>
+      </div>
 
-        {/* OLS best-fit line */}
-        {Number.isFinite(m) && Number.isFinite(b) && (
-          <line
-            x1={x(x0)}
-            y1={y(m * x0 + b)}
-            x2={x(x1)}
-            y2={y(m * x1 + b)}
-            stroke="#444"
-            strokeDasharray="6,4"
-          />
-        )}
+      {/* Chart */}
+      <svg width={svgW} height={svgH} role="img" aria-label="Unified Scatterplot">
+        <g transform={`translate(${M.left},${M.top})`}>
+          {/* Quadrants */}
+          <rect x={0} y={0} width={xMid} height={yMid} fill="blue" opacity="0.05" />
+          <rect x={xMid} y={0} width={W - xMid} height={yMid} fill="green" opacity="0.07" />
+          <rect x={0} y={yMid} width={xMid} height={H - yMid} fill="red" opacity="0.06" />
+          <rect x={xMid} y={yMid} width={W - xMid} height={H - yMid} fill="yellow" opacity="0.10" />
 
-        {data.map((d) => {
-          const cx = x(d.avgScore);
-          const cy = y(d.rs3);
-          return (
-            <g key={d.player} transform={`translate(${cx},${cy})`}>
-              <circle r={3.5} fill={burntOrange} opacity="0.9" />
-              <title>{`${d.player}\nAvg(Tech, Trends): ${d.avgScore.toFixed(2)}\n3m RS: ${d.rs3}`}</title>
+          {/* Axes */}
+          <line x1={0} y1={H} x2={W} y2={H} stroke="#ccc" />
+          <line x1={0} y1={0} x2={0} y2={H} stroke="#ccc" />
+
+          {/* Grid + Ticks */}
+          {xTicks.map((t, i) => (
+            <g key={`xt-${i}`} transform={`translate(${xScale(t)},0)`}>
+              <line y1={0} y2={H} stroke="#eee" />
+              <text y={H + 20} textAnchor="middle" fontSize="12" fill="#777">{formatTick(t)}</text>
             </g>
-          );
-        })}
+          ))}
+          {yTicks.map((t, i) => (
+            <g key={`yt-${i}`} transform={`translate(0,${yScale(t)})`}>
+              <line x1={0} x2={W} stroke="#eee" />
+              <text x={-12} y={4} textAnchor="end" fontSize="12" fill="#777">{formatTick(t)}</text>
+            </g>
+          ))}
 
-        <text x={W / 2} y={H + 36} textAnchor="middle" fontSize="12" fill="#333" fontWeight="700">
-          Composite Rank (0–100)
-        </text>
-        {/* y-axis label: on axis, centered along it */}
-        <text
-          transform="rotate(-90)"
-          x={-H / 2}
-          y={-46}
-          textAnchor="middle"
-          fontSize="12"
-          fill="#333"
-          fontWeight="700"
-        >
-          3-Month Relative Strength (RS)
-        </text>
-      </g>
-    </svg>
+          {/* OLS trendline */}
+          {Number.isFinite(m) && Number.isFinite(b) && (
+            <line
+              x1={xScale(xExtent[0])}
+              y1={yScale(m * xExtent[0] + b)}
+              x2={xScale(xExtent[1])}
+              y2={yScale(m * xExtent[1] + b)}
+              stroke="#444"
+              strokeDasharray="6,4"
+            />
+          )}
+
+          {/* Labels */}
+          {labels.map((d, idx) => (
+            <g key={`${d.player}-${idx}`}>
+              <text x={d.tx} y={d.ty} fontSize={FONT_SIZE} textAnchor="middle" fill="#333">
+                {d.player}
+              </text>
+              <title>{`${d.player}${d.league ? ` (${d.league})` : ""}\nX: ${formatTick(d.x)}\nY: ${formatTick(d.y)}`}</title>
+            </g>
+          ))}
+
+          {/* Axis labels */}
+          <text x={W / 2} y={H + 40} textAnchor="middle" fontSize="14" fill="#333" fontWeight="700">
+            {xVar.label}
+          </text>
+          <text transform="rotate(-90)" x={-H / 2} y={-56} textAnchor="middle" fontSize="14" fill="#333" fontWeight="700">
+            {yVar.label}
+          </text>
+        </g>
+      </svg>
+    </div>
   );
 }
 
-/** --- SCATTER: Technical (0–100) vs Google Trends (1–100) with best-fit line + quadrants --- **/
-function ScatterTechScoreVsTrends({ data, burntOrange, width = 1280, height = 420 }) {
-  // data: [{ player, techScaled (0–100, higher=better), gRank (1–100, higher=better) }]
-  const M = { top: 30, right: 20, bottom: 48, left: 60 };
-  const W = width - M.left - M.right;
-  const H = height - M.top - M.bottom;
-
-  const x0 = 0, x1 = 100;
-  const y0 = 0, y1 = 100;
-
-  const x = (v) => ((v - x0) / (x1 - x0)) * W;
-  const y = (v) => H - ((v - y0) / (y1 - y0)) * H;
-
-  const xTicks = [0, 20, 40, 60, 80, 100];
-  const yTicks = [0, 20, 40, 60, 80, 100];
-
-  // OLS
-  const { m, b } = olsLine(data, (d) => d.techScaled, (d) => d.gRank);
-
-  const dotColor = (t, g) => {
-    if (t >= 66 && g >= 66) return burntOrange;
-    if (t >= 50 && g >= 50) return "#2ca02c";
-    return "#1f77b4";
-  };
-
-  return (
-    <svg width={width} height={height} role="img" aria-label="Technical Score vs Google Trends Rank">
-      <g transform={`translate(${M.left},${M.top})`}>
-        {/* Quadrant backgrounds (screen-based): TL=blue, TR=green, BL=red, BR=yellow */}
-        <rect x={0} y={0} width={W / 2} height={H / 2} fill="blue" opacity="0.08" />
-        <rect x={W / 2} y={0} width={W / 2} height={H / 2} fill="green" opacity="0.08" />
-        <rect x={0} y={H / 2} width={W / 2} height={H / 2} fill="red" opacity="0.08" />
-        <rect x={W / 2} y={H / 2} width={W / 2} height={H / 2} fill="yellow" opacity="0.12" />
-
-        {/* Axes */}
-        <line x1={0} y1={H} x2={W} y2={H} stroke="#ccc" />
-        <line x1={0} y1={0} x2={0} y2={H} stroke="#ccc" />
-
-        {xTicks.map((t, i) => (
-          <g key={`xt-${i}`} transform={`translate(${x(t)},0)`}>
-            <line y1={0} y2={H} stroke="#eee" />
-            <text y={H + 16} textAnchor="middle" fontSize="10" fill="#777">
-              {t}
-            </text>
-          </g>
-        ))}
-        {yTicks.map((t, i) => (
-          <g key={`yt-${i}`} transform={`translate(0,${y(t)})`}>
-            <line x1={0} x2={W} stroke="#eee" />
-            <text x={-8} y={3} textAnchor="end" fontSize="10" fill="#777">
-              {t}
-            </text>
-          </g>
-        ))}
-
-        {/* OLS best-fit line */}
-        {Number.isFinite(m) && Number.isFinite(b) && (
-          <line
-            x1={x(x0)}
-            y1={y(m * x0 + b)}
-            x2={x(x1)}
-            y2={y(m * x1 + b)}
-            stroke="#444"
-            strokeDasharray="6,4"
-          />
-        )}
-
-        {data.map((d) => {
-          const cx = x(d.techScaled);
-          const cy = y(d.gRank);
-          return (
-            <g key={d.player} transform={`translate(${cx},${cy})`}>
-              <circle r={3.5} fill={dotColor(d.techScaled, d.gRank)} opacity="0.9" />
-              <title>{`${d.player}\nTechnical (0–100): ${d.techScaled}\nGoogle Trends Rank: ${Math.round(d.gRank)}`}</title>
-            </g>
-          );
-        })}
-
-        <text x={W / 2} y={H + 36} textAnchor="middle" fontSize="12" fill="#333" fontWeight="700">
-          Technical Rank (0–100, 100 = strongest)
-        </text>
-        {/* y-axis label: on axis, centered along it */}
-        <text
-          transform="rotate(-90)"
-          x={-H / 2}
-          y={-48}
-          textAnchor="middle"
-          fontSize="12"
-          fill="#333"
-          fontWeight="700"
-        >
-          Google Trends Rank (latest, 1–100)
-        </text>
-      </g>
-    </svg>
-  );
-}
-
-/** --- Box-Plot (Full Roster) — with sorting & league filters --- **/
+/** --- Box-Plot (FULL-WIDTH responsive) --- **/
 function BoxPlotAllPlayers({ rankedRows, columns, burntOrange }) {
   const [boxLeague, setBoxLeague] = useState("All");
+  const [wrapRef, widthPx] = useContainerWidth(680);       // min width for layout
+  const LABEL_W = Math.min(300, Math.max(180, Math.round(widthPx * 0.22))); // adaptive label column
+  const WIDTH = widthPx;                                   // full width
+  const RIGHT_M = 16;
+  const INNER_W = WIDTH - LABEL_W - RIGHT_M;
+  const TOP_M = 52;
+  const ROW_H = 22;
 
-  const allPlayerCols = useMemo(
-    () => columns.filter((c) => c !== "Date"),
-    [columns]
-  );
+  const allPlayerCols = useMemo(() => columns.filter((c) => c !== "Date"), [columns]);
 
   const playerCols = useMemo(() => {
     if (boxLeague === "All") return allPlayerCols;
@@ -1246,21 +1084,10 @@ function BoxPlotAllPlayers({ rankedRows, columns, burntOrange }) {
       return { col, min, q1, med, q3, max, cur, hasData: sorted.length > 0 };
     });
 
-    return unsorted.sort((a, b) => {
-      const av = a.cur ?? -Infinity;
-      const bv = b.cur ?? -Infinity;
-      return bv - av;
-    });
+    return unsorted.sort((a, b) => (b.cur ?? -Infinity) - (a.cur ?? -Infinity));
   }, [playerCols, rankedRows]);
 
-  const LABEL_W = 240;
-  const WIDTH = 1100;
-  const RIGHT_M = 20;
-  const INNER_W = WIDTH - LABEL_W - RIGHT_M;
-  const TOP_M = 58;
-  const ROW_H = 28;
-  const H = TOP_M + statsSorted.length * ROW_H + 24;
-
+  const H = TOP_M + statsSorted.length * ROW_H + 28;
   const x = (v) => (Math.max(0, Math.min(100, v)) / 100) * INNER_W;
   const gridTicks = [0, 25, 50, 75, 100];
 
@@ -1287,24 +1114,8 @@ function BoxPlotAllPlayers({ rankedRows, columns, burntOrange }) {
   };
 
   return (
-    <div
-      style={{
-        marginTop: 18,
-        padding: 12,
-        borderTop: `1px solid ${burntOrange}`,
-        background: "#fff",
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "baseline",
-          justifyContent: "space-between",
-          marginBottom: 8,
-          flexWrap: "wrap",
-          gap: 8,
-        }}
-      >
+    <div style={{ marginTop: 18, padding: 12, borderTop: `1px solid ${burntOrange}`, background: "#fff" }}>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 8, flexWrap: "wrap", gap: 8 }}>
         <h2 style={{ color: burntOrange, margin: 0, fontSize: 20, fontWeight: 800 }}>
           Box Plots for Google Trends Rankings (Ranks 1–100)
         </h2>
@@ -1319,154 +1130,129 @@ function BoxPlotAllPlayers({ rankedRows, columns, burntOrange }) {
 
         <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span
-              style={{
-                display: "inline-block",
-                width: 18,
-                height: 10,
-                background: "#f2f2f2",
-                border: "1px solid #999",
-              }}
-            />
+            <span style={{ display: "inline-block", width: 18, height: 10, background: "#f2f2f2", border: "1px solid #999" }} />
             <span style={{ fontSize: 12 }}>IQR (Q1–Q3)</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span
-              style={{
-                display: "inline-block",
-                width: 18,
-                height: 0,
-                borderTop: "2px solid #333",
-              }}
-            />
+            <span style={{ display: "inline-block", width: 18, height: 0, borderTop: "2px solid #333" }} />
             <span style={{ fontSize: 12 }}>Median</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <svg width={18} height={12}>
-              <path
-                d="M9 1 L16 6 L9 11 L2 6 Z"
-                fill={burntOrange}
-                stroke="#222"
-                strokeWidth="1"
-              />
-            </svg>
+            <svg width={18} height={12}><path d="M9 1 L16 6 L9 11 L2 6 Z" fill={burntOrange} stroke="#222" strokeWidth="1" /></svg>
             <span style={{ fontSize: 12 }}>Current value</span>
           </div>
         </div>
       </div>
 
-      <svg width={WIDTH} height={H} role="img" aria-label="Box plots for all players">
-        <g transform={`translate(${LABEL_W},${TOP_M})`}>
-          {gridTicks.map((t) => (
-            <g key={t} transform={`translate(${x(t)},0)`}>
-              <line y1={-TOP_M + 8} y2={H - TOP_M - 24} stroke="#eee" />
-              <text
-                x={0}
-                y={H - TOP_M - 8}
-                fontSize="10"
-                fill="#777"
-                textAnchor="middle"
-              >
-                {t}
-              </text>
+      {/* FULL-WIDTH, responsive; scroll only if tall */}
+      <div ref={wrapRef} style={{ width: "100%" }}>
+        <div style={{ maxHeight: 560, overflowY: "auto", border: "1px solid #eee", borderRadius: 8 }}>
+          <svg width={WIDTH} height={H} role="img" aria-label="Box plots for all players">
+            {/* Grid */}
+            <g transform={`translate(${LABEL_W},${TOP_M})`}>
+              {gridTicks.map((t) => (
+                <g key={t} transform={`translate(${x(t)},0)`}>
+                  <line y1={-TOP_M + 8} y2={H - TOP_M - 24} stroke="#eee" />
+                  <text x={0} y={H - TOP_M - 8} fontSize="10" fill="#777" textAnchor="middle">{t}</text>
+                </g>
+              ))}
             </g>
-          ))}
-        </g>
 
-        <g transform={`translate(0,${TOP_M})`}>
-          {statsSorted.map((s, idx) => {
-            const yMid = idx * ROW_H + ROW_H / 2;
-            const yBoxTop = yMid - 6;
-            const yBoxH = 12;
+            {/* Rows */}
+            <g transform={`translate(0,${TOP_M})`}>
+              {statsSorted.map((s, idx) => {
+                const yMid = idx * ROW_H + ROW_H / 2;
+                const yBoxTop = yMid - 6;
+                const yBoxH = 12;
 
-            if (!s.hasData) {
-              return (
-                <g key={s.col}>
-                  <text
-                    x={LABEL_W - 8}
-                    y={yMid + 3}
-                    textAnchor="end"
-                    fontSize="12"
-                    fill="#999"
-                  >
-                    {s.col}
-                  </text>
-                  <text x={LABEL_W + 8} y={yMid + 3} fontSize="11" fill="#bbb">
-                    No data
-                  </text>
-                </g>
-              );
-            }
+                if (!s.hasData) {
+                  return (
+                    <g key={s.col}>
+                      <text x={LABEL_W - 8} y={yMid + 3} textAnchor="end" fontSize="12" fill="#999">{s.col}</text>
+                      <text x={LABEL_W + 8} y={yMid + 3} fontSize="11" fill="#bbb">No data</text>
+                    </g>
+                  );
+                }
 
-            const xMin = x(s.min);
-            const xQ1 = x(s.q1);
-            const xMed = x(s.med);
-            const xQ3 = x(s.q3);
-            const xMax = x(s.max);
-            const xCur = s.cur == null ? null : x(s.cur);
+                const xMin = x(s.min);
+                const xQ1 = x(s.q1);
+                const xMed = x(s.med);
+                const xQ3 = x(s.q3);
+                const xMax = x(s.max);
+                const xCur = s.cur == null ? null : x(s.cur);
 
-            return (
-              <g key={s.col}>
-                <text
-                  x={LABEL_W - 8}
-                  y={yMid + 3}
-                  textAnchor="end"
-                  fontSize="12"
-                  fill="#333"
-                >
-                  {s.col}
-                </text>
+                return (
+                  <g key={s.col}>
+                    <text x={LABEL_W - 8} y={yMid + 3} textAnchor="end" fontSize="12" fill="#333">{s.col}</text>
 
-                <g transform={`translate(${LABEL_W},0)`}>
-                  <line x1={xMin} x2={xQ1} y1={yMid} y2={yMid} stroke="#aaa" />
-                  <line x1={xQ3} x2={xMax} y1={yMid} y2={yMid} stroke="#aaa" />
-                  <line x1={xMin} x2={xMin} y1={yMid - 5} y2={yMid + 5} stroke="#aaa" />
-                  <line x1={xMax} x2={xMax} y1={yMid - 5} y2={yMid + 5} stroke="#aaa" />
-                  <rect
-                    x={xQ1}
-                    y={yBoxTop}
-                    width={Math.max(1, xQ3 - xQ1)}
-                    height={yBoxH}
-                    fill="#f2f2f2"
-                    stroke="#999"
-                  />
-                  <line
-                    x1={xMed}
-                    x2={xMed}
-                    y1={yBoxTop}
-                    y2={yBoxTop + yBoxH}
-                    stroke="#333"
-                    strokeWidth={2}
-                  />
-                  {xCur != null && (
-                    <path
-                      d={`M ${xCur} ${yMid - 6} L ${xCur + 6} ${yMid} L ${xCur} ${yMid + 6} L ${xCur - 6} ${yMid} Z`}
-                      fill={burntOrange}
-                      stroke="#222"
-                      strokeWidth="1"
-                    />
-                  )}
-                </g>
-              </g>
-            );
-          })}
-        </g>
-      </svg>
+                    <g transform={`translate(${LABEL_W},0)`}>
+                      <line x1={xMin} x2={xQ1} y1={yMid} y2={yMid} stroke="#aaa" />
+                      <line x1={xQ3} x2={xMax} y1={yMid} y2={yMid} stroke="#aaa" />
+                      <line x1={xMin} x2={xMin} y1={yMid - 4} y2={yMid + 4} stroke="#aaa" />
+                      <line x1={xMax} x2={xMax} y1={yMid - 4} y2={yMid + 4} stroke="#aaa" />
+                      <rect x={xQ1} y={yBoxTop} width={Math.max(1, xQ3 - xQ1)} height={yBoxH} fill="#f2f2f2" stroke="#999" />
+                      <line x1={xMed} x2={xMed} y1={yBoxTop} y2={yBoxTop + yBoxH} stroke="#333" strokeWidth={2} />
+                      {xCur != null && (
+                        <path
+                          d={`M ${xCur} ${yMid - 6} L ${xCur + 6} ${yMid} L ${xCur} ${yMid + 6} L ${xCur - 6} ${yMid} Z`}
+                          fill={burntOrange}
+                          stroke="#222"
+                          strokeWidth="1"
+                        />
+                      )}
+                    </g>
+                  </g>
+                );
+              })}
+            </g>
+          </svg>
+        </div>
+      </div>
     </div>
   );
 }
 
-/** Helpers **/
-function normalizeDate(val) {
-  if (typeof val === "number") {
+/** --- Shared helpers & hooks --- **/
+function parseMonthHeader(h) {
+  if (h == null) return null;
+  if (typeof h === "number") {
     const epoch = new Date(Date.UTC(1899, 11, 30));
-    const ms = val * 24 * 60 * 60 * 1000;
-    return epochToISO(new Date(epoch.getTime() + ms));
+    const ms = h * 24 * 60 * 60 * 1000;
+    const d = new Date(epoch.getTime() + ms);
+    if (isNaN(d)) return null;
+    return toMonthStartISO(d);
   }
-  const d = new Date(val);
-  return isNaN(d.getTime()) ? null : epochToISO(d);
+  if (h instanceof Date) {
+    if (isNaN(h)) return null;
+    return toMonthStartISO(h);
+  }
+  const s = String(h).trim();
+  if (!s) return null;
+
+  const m1 = s.match(/^([A-Za-z]{3,})[-\s]?(\d{2,4})$/);
+  if (m1) {
+    const month = monthIndexFromName(m1[1]);
+    if (month != null) {
+      let year = Number(m1[2]);
+      if (year < 100) year += 2000;
+      return toMonthStartISO(new Date(Date.UTC(year, month, 1)));
+    }
+  }
+
+  const d2 = new Date(s);
+  if (!isNaN(d2)) return toMonthStartISO(d2);
+  return null;
 }
-function epochToISO(dt) {
+function monthIndexFromName(name) {
+  const m = name.toLowerCase().slice(0, 3);
+  const arr = ["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"];
+  const idx = arr.indexOf(m);
+  return idx === -1 ? null : idx;
+}
+function toMonthStartISO(d) {
+  const y = d.getUTCFullYear();
+  const m = d.getUTCMonth();
+  const dt = new Date(Date.UTC(y, m, 1));
   return dt.toISOString().slice(0, 10);
 }
 
@@ -1475,25 +1261,102 @@ function toFiniteNumber(v) {
   if (typeof v === "number" && Number.isFinite(v)) return v;
   const s = String(v).trim();
   if (!s) return null;
+  if (s.startsWith("<")) return 0;
   const n = Number(s.replace(/,/g, ""));
   return Number.isFinite(n) ? n : null;
 }
-
-// Remove accent marks & standardize to ASCII
 function toASCII(s) {
   if (typeof s !== "string") return s;
   let out = s.normalize("NFKD").replace(/[\u0300-\u036f]/g, "");
   out = out
-    .replace(/ß/g, "ss")
-    .replace(/Đ/g, "D")
-    .replace(/đ/g, "d")
-    .replace(/Ł/g, "L")
-    .replace(/ł/g, "l")
-    .replace(/Ø/g, "O")
-    .replace(/ø/g, "o")
-    .replace(/Æ/g, "AE")
-    .replace(/æ/g, "ae")
-    .replace(/Œ/g, "OE")
-    .replace(/œ/g, "oe");
+    .replace(/ß/g, "ss").replace(/Đ/g, "D").replace(/đ/g, "d")
+    .replace(/Ł/g, "L").replace(/ł/g, "l").replace(/Ø/g, "O").replace(/ø/g, "o")
+    .replace(/Æ/g, "AE").replace(/æ/g, "ae").replace(/Œ/g, "OE").replace(/œ/g, "oe");
   return out;
+}
+function titleCaseFromKey(k) {
+  const parts = String(k || "").split(/[\s._-]+/).filter(Boolean);
+  return parts.map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(" ");
+}
+function autoExtent(values) {
+  const finite = values.filter((v) => Number.isFinite(v));
+  if (!finite.length) return [0, 1];
+  const min = Math.min(...finite);
+  const max = Math.max(...finite);
+  if (min === max) return [min - 1, max + 1];
+  const pad = (max - min) * 0.08 || 1;
+  return [min - pad, max + pad];
+}
+function ticksFromExtent([min, max], n = 5) {
+  if (!Number.isFinite(min) || !Number.isFinite(max) || min === max) return [min];
+  const step = (max - min) / n;
+  return Array.from({ length: n + 1 }, (_, i) => roundNice(min + i * step));
+}
+function roundNice(v) {
+  const abs = Math.abs(v);
+  if (abs >= 1000) return Math.round(v);
+  if (abs >= 100) return Math.round(v * 10) / 10;
+  if (abs >= 1) return Math.round(v * 100) / 100;
+  return Math.round(v * 1000) / 1000;
+}
+function formatTick(v) {
+  if (!Number.isFinite(v)) return "";
+  const abs = Math.abs(v);
+  if (abs >= 1000) return Math.round(v).toString();
+  if (abs >= 100) return (Math.round(v * 10) / 10).toString();
+  if (abs >= 1) return (Math.round(v * 100) / 100).toString();
+  return (Math.round(v * 1000) / 1000).toString();
+}
+function selectStyle(color) {
+  return {
+    border: `1px solid ${color}`,
+    borderRadius: 8,
+    padding: "6px 10px",
+    fontWeight: 600,
+    color,
+    background: "#fff",
+    outline: "none",
+    cursor: "pointer",
+  };
+}
+function sportToLeague(s) {
+  const v = String(s || "").trim().toLowerCase();
+  if (!v) return "";
+  if (v.startsWith("foot")) return "NFL";
+  if (v.startsWith("basket")) return "NBA";
+  if (v.startsWith("base")) return "MLB";
+  if (["mlb", "nba", "nfl"].includes(v)) return v.toUpperCase();
+  return "";
+}
+
+/** Measure container width with ResizeObserver + window resize fallback */
+function useContainerWidth(minWidth = 480) {
+  const ref = useRef(null);
+  const [w, setW] = useState(minWidth);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const update = () => {
+      const rect = el.getBoundingClientRect();
+      setW(Math.max(minWidth, Math.floor(rect.width)));
+    };
+
+    let ro = null;
+    if (typeof ResizeObserver !== "undefined") {
+      ro = new ResizeObserver(() => update());
+      ro.observe(el);
+    } else {
+      window.addEventListener("resize", update);
+    }
+
+    update();
+    return () => {
+      if (ro) ro.disconnect();
+      else window.removeEventListener("resize", update);
+    };
+  }, [minWidth]);
+
+  return [ref, w];
 }
