@@ -9,7 +9,7 @@ export default function Research() {
   const [rows, setRows] = useState([]);       // Monthly Google Trends RANKS rows
   const [columns, setColumns] = useState([]); // ["Date", "Player (LEAGUE)", ...]
   const [error, setError] = useState("");
-  const [selectedPlayers, setSelectedPlayers] = useState([]); // for the charts (up to 5)
+  const [selectedPlayers, setSelectedPlayers] = useState([]); // for the charts
 
   // Technical & returns inputs from Key_Player_Returns.xlsx
   const [techScores, setTechScores] = useState([]); // [{ player, raw, scaled0to100 }]
@@ -461,12 +461,12 @@ export default function Research() {
   );
 }
 
-/** --- Multi-Select (searchable, max N) --- **/
+/** --- Multi-Select (searchable, unlimited by default) --- **/
 function MultiSelect({
   options,
   selected,
   onChange,
-  max = 5,
+  max = null, // ⬅ unlimited when null
   color = "#BF5700",
   placeholder = "Search & select players…",
 }) {
@@ -490,10 +490,11 @@ function MultiSelect({
     const base = q ? options.filter((o) => norm(o).includes(q)) : options;
     // keep selected at top, then matches
     const sel = new Set(selected);
-    return base.filter((o) => sel.has(o)).concat(base.filter((o) => !sel.has(o))).slice(0, 500);
+    return base.filter((o) => sel.has(o)).concat(base.filter((o) => !sel.has(o))).slice(0, 1000);
   }, [options, selected, query]);
 
-  const atLimit = selected.length >= max;
+  const hasLimit = max != null && Number.isFinite(max);
+  const atLimit = hasLimit && selected.length >= max;
 
   const toggle = (opt) => {
     if (selected.includes(opt)) {
@@ -636,7 +637,9 @@ function MultiSelect({
 
       {/* Helper row */}
       <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
-        <small style={{ color: "#777" }}>{selected.length}/{max} selected</small>
+        <small style={{ color: "#777" }}>
+          {selected.length}{hasLimit ? `/${max}` : ""} selected
+        </small>
         {atLimit && <small style={{ color, fontWeight: 700 }}>Limit reached</small>}
       </div>
     </div>
@@ -722,13 +725,13 @@ function ChartSection({ rankedRows, columns, selectedPlayers, setSelectedPlayers
     <div style={{ padding: "12px", borderTop: `1px solid ${burntOrange}`, background: "#fff", marginTop: 12 }}>
       {/* Multi-Selector */}
       <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 10 }}>
-        <span style={{ color: burntOrange, fontWeight: 700 }}>Choose up to 5 players:</span>
+        <span style={{ color: burntOrange, fontWeight: 700 }}>Choose players:</span>
         <div style={{ flex: 1, minWidth: 260 }}>
           <MultiSelect
             options={playerOptions}
             selected={selectedPlayers}
             onChange={setSelectedPlayers}
-            max={5}
+            // no "max" prop => unlimited selections
             color={burntOrange}
             placeholder="Search & select players…"
           />
@@ -1015,7 +1018,7 @@ function UnifiedScatter({ data, burntOrange }) {
           {/* Labels */}
           {labels.map((d, idx) => (
             <g key={`${d.player}-${idx}`}>
-              <text x={d.tx} y={d.ty} fontSize={FONT_SIZE} textAnchor="middle" fill="#333">
+              <text x={d.tx} y={d.ty} fontSize={11} textAnchor="middle" fill="#333">
                 {d.player}
               </text>
               <title>{`${d.player}${d.league ? ` (${d.league})` : ""}\nX: ${formatTick(d.x)}\nY: ${formatTick(d.y)}`}</title>
