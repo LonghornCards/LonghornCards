@@ -4,6 +4,8 @@ import * as XLSX from "xlsx";
 // ✅ Monthly Google Trends ranks
 import trendsUrl from "./assets/Google_Trends_Ranks.xlsx?url";
 import keyReturnsUrl from "./assets/Key_Player_Returns.xlsx?url";
+// ✅ Fundamentals (Rank + Change)
+import fundamentalsUrl from "./assets/Key_Player_Fundamentals.xlsx?url";
 
 export default function Research() {
   const [rows, setRows] = useState([]);       // Monthly Google Trends RANKS rows
@@ -14,6 +16,9 @@ export default function Research() {
   // Technical & returns inputs from Key_Player_Returns.xlsx
   const [techScores, setTechScores] = useState([]); // [{ player, raw, scaled0to100 }]
   const [rsPoints, setRsPoints] = useState([]);     // [{ player, rs3, rs12 }]
+
+  // Fundamentals from Key_Player_Fundamentals.xlsx
+  const [fundamentals, setFundamentals] = useState([]); // [{ player, fundRank, fundChange }]
 
   const burntOrange = "#BF5700";
 
@@ -212,6 +217,77 @@ export default function Research() {
     })();
   }, []);
 
+  // -------- Load Fundamentals (Fundamental Rank + Fundamental Change) ----------
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(fundamentalsUrl);
+        if (!res.ok) throw new Error(`Failed to fetch Key_Player_Fundamentals.xlsx: ${res.status}`);
+        const buf = await res.arrayBuffer();
+        const wb = XLSX.read(buf, { type: "array" });
+
+        const firstSheet = wb.SheetNames[0];
+        const ws = wb.Sheets[firstSheet];
+        if (!ws) throw new Error("Key_Player_Fundamentals sheet not found.");
+
+        const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
+        if (!aoa.length) throw new Error("Key_Player_Fundamentals sheet is empty.");
+
+        let headerRowIdx = 0;
+        let playerCol = -1;
+        let fundRankCol = -1;
+        let fundChangeCol = -1;
+
+        const findCols = (row) => {
+          const lc = row.map((h) =>
+            (typeof h === "string" ? h.trim().toLowerCase() : String(h ?? "").toLowerCase())
+          );
+          let p = -1, fr = -1, fc = -1;
+          lc.forEach((v, i) => {
+            const vComp = v.replace(/\s+/g, "");
+            if (p === -1 && vComp.includes("player")) p = i;
+
+            // Fundamental Rank candidates
+            if (fr === -1 && /fund/.test(v) && /(rank|score)/.test(v)) fr = i;
+
+            // Fundamental Change candidates (change/delta/Δ)
+            if (fc === -1 && (/fund/.test(v) && /(change|delta|Δ|∆|chg)/.test(v))) fc = i;
+            if (fc === -1 && /(change|delta|Δ|∆|chg)/.test(v) && !/price/i.test(v)) fc = i;
+          });
+          return { p, fr, fc };
+        };
+
+        for (let i = 0; i < Math.min(6, aoa.length); i++) {
+          const { p, fr, fc } = findCols(aoa[i]);
+          if (p !== -1) {
+            headerRowIdx = i;
+            playerCol = p;
+            fundRankCol = fr;
+            fundChangeCol = fc;
+            break;
+          }
+        }
+        if (playerCol === -1) playerCol = 0;
+
+        const tmp = [];
+        for (let r = headerRowIdx + 1; r < aoa.length; r++) {
+          const row = aoa[r];
+          if (!row) continue;
+          const player = (row[playerCol] ?? "").toString().trim();
+          if (!player) continue;
+          const fundRank = fundRankCol !== -1 ? toFiniteNumber(row[fundRankCol]) : null;
+          const fundChange = fundChangeCol !== -1 ? toFiniteNumber(row[fundChangeCol]) : null;
+          if (fundRank != null || fundChange != null) {
+            tmp.push({ player, fundRank: fundRank ?? null, fundChange: fundChange ?? null });
+          }
+        }
+        setFundamentals(tmp);
+      } catch {
+        setFundamentals([]);
+      }
+    })();
+  }, []);
+
   // With monthly ranks, pass straight through as "rankedRows"
   const rankedRows = rows;
 
@@ -306,36 +382,81 @@ export default function Research() {
     return map;
   }, [rankedRows, columns]);
 
+  // Fundamentals map
+  const fundamentalMap = useMemo(() => {
+    const map = new Map();
+    for (const f of fundamentals) {
+      const key = toASCII(f.player).toLowerCase();
+      map.set(key, { fundRank: Number.isFinite(f.fundRank) ? f.fundRank : null, fundChange: Number.isFinite(f.fundChange) ? f.fundChange : null });
+    }
+    return map;
+  }, [fundamentals]);
+
   const unifiedData = useMemo(() => {
     const techMap = new Map(techScaledList.map((d) => [toASCII(d.player).toLowerCase(), d.techScaled]));
     const rsMap = new Map(rsPoints.map((d) => [toASCII(d.player).toLowerCase(), { rs3: d.rs3, rs12: d.rs12 }]));
     const rsRankMap = new Map(rsRankedPoints.map((d) => [toASCII(d.player).toLowerCase(), { rs3Rank: d.rs3Rank, rs12Rank: d.rs12Rank }]));
 
-    const keys = new Set([...techMap.keys(), ...rsMap.keys(), ...rsRankMap.keys(), ...latestInfoMap.keys()]);
+    const keys = new Set([
+      ...techMap.keys(),
+      ...rsMap.keys(),
+      ...rsRankMap.keys(),
+      ...latestInfoMap.keys(),
+      ...fundamentalMap.keys(),
+    ]);
+
     const out = [];
     for (const k of keys) {
       const techScaled = techMap.get(k) ?? null;
       const rs = rsMap.get(k) ?? {};
       const ranks = rsRankMap.get(k) ?? {};
       const info = latestInfoMap.get(k) ?? {};
+      const fund = fundamentalMap.get(k) ?? {};
+
       const gRank = info?.gRank ?? null;
       const league = info?.league ?? null;
-      const avgScore = Number.isFinite(techScaled) && Number.isFinite(gRank) ? (techScaled + gRank) / 2 : null;
+      const fundRank = fund?.fundRank ?? null;
+      const fundChange = fund?.fundChange ?? null;
+
+      // 2-source composite (tech & google)
+      const comp2src = Number.isFinite(techScaled) && Number.isFinite(gRank) ? (techScaled + gRank) / 2 : null;
+      // 3-source composite: 2/3 of prior composite + 1/3 fundamental rank
+      const comp3src =
+        Number.isFinite(comp2src) && Number.isFinite(fundRank)
+          ? (2 * comp2src) / 3 + fundRank / 3
+          : null;
 
       out.push({
         player: titleCaseFromKey(k),
         league,
         techScaled,
         gRank,
-        avgScore,
-        rs3: isFinite(rs.rs3) ? rs.rs3 : null,
-        rs12: isFinite(rs.rs12) ? rs.rs12 : null,
+        comp2src,                 // previous Composite Rank
+        comp3src,                 // NEW 3-source Composite Rank
+        fundRank,
+        fundChange,
+        rs3: Number.isFinite(rs.rs3) ? rs.rs3 : null,
+        rs12: Number.isFinite(rs.rs12) ? rs.rs12 : null,
         rs3Rank: ranks.rs3Rank ?? null,
         rs12Rank: ranks.rs12Rank ?? null,
       });
     }
-    return out.filter((d) => [d.techScaled, d.gRank, d.avgScore, d.rs3, d.rs12, d.rs3Rank, d.rs12Rank].some(Number.isFinite));
-  }, [techScaledList, rsPoints, rsRankedPoints, latestInfoMap]);
+
+    return out.filter((d) =>
+      [
+        d.techScaled,
+        d.gRank,
+        d.comp2src,
+        d.comp3src,
+        d.fundRank,
+        d.fundChange,
+        d.rs3,
+        d.rs12,
+        d.rs3Rank,
+        d.rs12Rank,
+      ].some(Number.isFinite)
+    );
+  }, [techScaledList, rsPoints, rsRankedPoints, latestInfoMap, fundamentalMap]);
 
   if (error) {
     return (
@@ -387,7 +508,7 @@ export default function Research() {
           textAlign: "center",
         }}
       >
-        Technical and Sentiment Research
+         Research:  Fundamental, Technical & Sentiment
       </h1>
 
       {/* --- Unified Scatterplot --- */}
@@ -412,7 +533,10 @@ export default function Research() {
 {`Variables available:
 - Technical Rank (0–100; higher = better)
 - Google Trends Rank (latest, 1–100; higher = better)
-- Composite Rank = avg(Technical, Google Trends) (0–100)
+- Composite Rank (Tech & Google avg) — 2-source
+- Composite Rank (2/3 of prior + 1/3 Fundamental) — 3-source
+- Fundamental Rank (0–100; higher = better)
+- Fundamental Change (Δ; can be negative/positive)
 - 3-Month RS (raw)
 - 12-Month RS (raw)
 - 3-Month RS Rank (0–100; higher = better)
@@ -432,7 +556,7 @@ export default function Research() {
 
       {/* Disclosure */}
       <div style={{ marginTop: 8, fontSize: 12, color: "#666", textAlign: "left", whiteSpace: "pre-wrap" }}>
-        {"Source:  Underlying data sourced from Google Trends.  Calculations by Longhorn Cards transform the monthly data into player series."}
+        {"Source:  Underlying data sourced from Google Trends.  Calculations by Longhorn Cards transform the data into sentiment rankings."}
       </div>
 
       {/* ⬇︎ Box Plot now full-width & responsive */}
@@ -646,7 +770,7 @@ function MultiSelect({
   );
 }
 
-/** --- Line & Bar Charts Subcomponent (uses MultiSelect) --- **/
+/** --- Line Chart Section (BAR REMOVED, LINE IS FULL-WIDTH) --- **/
 function ChartSection({ rankedRows, columns, selectedPlayers, setSelectedPlayers, burntOrange }) {
   const [chartLeague] = useState("All"); // reserved for future filtering
   const parseCol = (c) => {
@@ -683,16 +807,22 @@ function ChartSection({ rankedRows, columns, selectedPlayers, setSelectedPlayers
     });
   }, [playerOptions, rankedRows, setSelectedPlayers]);
 
-  const WIDTH = 900;
-  const HEIGHT = 300;
-  const MARGIN = { top: 20, right: 20, bottom: 40, left: 40 };
+  // Make the line chart full-width of its container
+  const [wrapRef, widthPx] = useContainerWidth(680); // min width for a pleasant layout
+  const WIDTH = widthPx;
+  const HEIGHT = 340;
+  const MARGIN = { top: 20, right: 20, bottom: 40, left: 46 };
   const innerW = WIDTH - MARGIN.left - MARGIN.right;
   const innerH = HEIGHT - MARGIN.top - MARGIN.bottom;
 
   const n = rankedRows.length;
   const xLine = (i) => (n <= 1 ? 0 : (i / (n - 1)) * innerW);
   const yRank = (v) => innerH - (Math.max(0, Math.min(100, v)) / 100) * innerH;
-  const COLORS = ["#1f77b4","#ff7f0e","#2ca02c","#d62728","#9467bd","#8c564b","#e377c2","#7f7f7f","#bcbd22","#17becf"];
+
+  const COLORS = [
+    "#1f77b4","#ff7f0e","#2ca02c","#d62728","#9467bd",
+    "#8c564b","#e377c2","#7f7f7f","#bcbd22","#17becf"
+  ];
 
   const linePaths = useMemo(() => {
     const makePathD = (col) => {
@@ -702,24 +832,12 @@ function ChartSection({ rankedRows, columns, selectedPlayers, setSelectedPlayers
         if (v == null || Number.isNaN(v)) continue;
         const px = xLine(i);
         const py = yRank(v);
-        d += i === 0 ? `M ${px} ${py}` : ` L ${px} ${py}`;
+        d += d ? ` L ${px} ${py}` : `M ${px} ${py}`;
       }
       return d;
     };
     return selectedPlayers.map((col, idx) => ({ col, d: makePathD(col), color: COLORS[idx % COLORS.length] }));
   }, [selectedPlayers, rankedRows, n]);
-
-  const latest = rankedRows[rankedRows.length - 1] || {};
-  const barData = selectedPlayers.map((col, idx) => ({
-    col,
-    value: Number.isFinite(latest[col]) ? latest[col] : 0,
-    color: COLORS[idx % COLORS.length],
-  }));
-
-  const m = Math.max(1, barData.length);
-  const band = innerW / m;
-  const barW = Math.max(12, band * 0.6);
-  const barX = (i) => i * band + (band - barW) / 2;
 
   return (
     <div style={{ padding: "12px", borderTop: `1px solid ${burntOrange}`, background: "#fff", marginTop: 12 }}>
@@ -731,7 +849,6 @@ function ChartSection({ rankedRows, columns, selectedPlayers, setSelectedPlayers
             options={playerOptions}
             selected={selectedPlayers}
             onChange={setSelectedPlayers}
-            // no "max" prop => unlimited selections
             color={burntOrange}
             placeholder="Search & select players…"
           />
@@ -750,11 +867,11 @@ function ChartSection({ rankedRows, columns, selectedPlayers, setSelectedPlayers
         </div>
       )}
 
-      {/* Line + Bar */}
-      <div style={{ display: "flex", gap: 16 }}>
-        {/* Line */}
+      {/* Full-width Line Chart */}
+      <div ref={wrapRef} style={{ width: "100%" }}>
         <svg width={WIDTH} height={HEIGHT} role="img" aria-label="Player comparison line chart">
           <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
+            {/* Axes */}
             <line x1={0} y1={0} x2={0} y2={innerH} stroke="#ccc" />
             {[0, 20, 40, 60, 80, 100].map((t) => (
               <g key={t} transform={`translate(0,${yRank(t)})`}>
@@ -763,6 +880,8 @@ function ChartSection({ rankedRows, columns, selectedPlayers, setSelectedPlayers
               </g>
             ))}
             <line x1={0} y1={innerH} x2={innerW} y2={innerH} stroke="#ccc" />
+
+            {/* X ticks (sample across the series) */}
             {Array.from({ length: 8 }).map((_, k) => {
               const i = Math.round((k / 7) * (n - 1));
               const date = rankedRows[i]?.Date;
@@ -773,35 +892,11 @@ function ChartSection({ rankedRows, columns, selectedPlayers, setSelectedPlayers
                 </g>
               );
             })}
+
+            {/* Lines */}
             {linePaths.map((p) => (
               <path key={p.col} d={p.d} fill="none" stroke={p.color} strokeWidth={2} vectorEffect="non-scaling-stroke" />
             ))}
-          </g>
-        </svg>
-
-        {/* Bar */}
-        <svg width={WIDTH} height={HEIGHT} role="img" aria-label="Most recent monthly ranks (bar chart)">
-          <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
-            <line x1={0} y1={0} x2={0} y2={innerH} stroke="#ccc" />
-            {[0, 20, 40, 60, 80, 100].map((t) => (
-              <g key={t} transform={`translate(0,${yRank(t)})`}>
-                <line x1={0} x2={innerW} y1={0} y2={0} stroke="#eee" />
-                <text x={-8} y={3} textAnchor="end" fontSize="10" fill="#777">{t}</text>
-              </g>
-            ))}
-            <line x1={0} y1={innerH} x2={innerW} y2={innerH} stroke="#ccc" />
-            {barData.map((b, i) => {
-              const x = barX(i);
-              const y = yRank(b.value);
-              const h = innerH - y;
-              return (
-                <g key={b.col} transform={`translate(${x},0)`}>
-                  <rect x={0} y={y} width={barW} height={h} fill={b.color} />
-                  <text x={barW / 2} y={y - 4} textAnchor="middle" fontSize="10" fill="#333">{Math.round(b.value)}</text>
-                  <text x={barW / 2} y={innerH + 14} textAnchor="middle" fontSize="10" fill="#777">{b.col}</text>
-                </g>
-              );
-            })}
           </g>
         </svg>
       </div>
@@ -813,8 +908,11 @@ function ChartSection({ rankedRows, columns, selectedPlayers, setSelectedPlayers
 function UnifiedScatter({ data, burntOrange }) {
   const VARS = [
     { key: "techScaled", label: "Technical Rank (0–100)", fixed: [0, 100] },
-    { key: "gRank", label: "Google Trends Rank (1–100)", fixed: [0, 100] },
-    { key: "avgScore", label: "Composite Rank (avg of Technical & Google)", fixed: [0, 100] },
+    { key: "gRank", label: "Sentiment Rank (1–100)", fixed: [0, 100] },
+    { key: "comp2src", label: "Technical & Sentiment Rank", fixed: [0, 100] },
+    { key: "comp3src", label: "Composite Rank (Technical, Sentiment, Fundamental)", fixed: [0, 100] },
+    { key: "fundRank", label: "Fundamental Rank (0–100)", fixed: [0, 100] },
+    { key: "fundChange", label: "Fundamental Change (Δ)" },
     { key: "rs3", label: "3-Month RS (raw)" },
     { key: "rs12", label: "12-Month RS (raw)" },
     { key: "rs3Rank", label: "3-Month RS Rank (0–100)", fixed: [0, 100] },
@@ -1120,7 +1218,7 @@ function BoxPlotAllPlayers({ rankedRows, columns, burntOrange }) {
     <div style={{ marginTop: 18, padding: 12, borderTop: `1px solid ${burntOrange}`, background: "#fff" }}>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 8, flexWrap: "wrap", gap: 8 }}>
         <h2 style={{ color: burntOrange, margin: 0, fontSize: 20, fontWeight: 800 }}>
-          Box Plots for Google Trends Rankings (Ranks 1–100)
+          Box Plots for Sentiment Rankings Based on Google Trends (Ranks 1–100)
         </h2>
 
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
