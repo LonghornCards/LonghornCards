@@ -41,6 +41,20 @@ export default function HomePage() {
         >
           Home
         </Link>
+
+        {/* ✅ New Feeds link */}
+        <Link
+          to="/feeds"
+          style={{
+            textDecoration: "none",
+            color: burntOrange,
+            fontWeight: "bold",
+            fontSize: "1.1rem",
+          }}
+        >
+          Feeds
+        </Link>
+
         <Link
           to="/history"
           style={{
