@@ -1,5 +1,6 @@
 // src/News.jsx
 import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { Link } from "react-router-dom";
 
 /**
  * Sources
@@ -11,7 +12,7 @@ import React, { useEffect, useMemo, useRef, useState, useCallback } from "react"
  * - CLLCT – Memorabilia (HTML)
  * - CLLCT – Sports Cards (HTML)
  *
- * Feeds fetched via AllOrigins to avoid CORS:
+ * Fetched via AllOrigins to avoid CORS:
  *   https://api.allorigins.win/get?url=<encoded>
  */
 
@@ -156,13 +157,16 @@ function parseCllctCategoryHtml(htmlText, { url, sourceId, sourceName }) {
   const base = "https://www.cllct.com";
   const candidates = new Set();
 
+  // Likely article containers
   doc.querySelectorAll("article").forEach((el) => candidates.add(el));
 
+  // Any anchor into /sports-collectibles/ path
   doc.querySelectorAll("a[href*='/sports-collectibles/']").forEach((a) => {
     const article = a.closest("article") || a.closest("[class*='card'],[class*='Card'],li,div");
     candidates.add(article || a);
   });
 
+  // Fallback scan in main region
   const mainSection = doc.querySelector("main") || doc.body;
   if (mainSection) {
     mainSection.querySelectorAll("a[href*='/sports-collectibles/']").forEach((a) => {
@@ -214,6 +218,7 @@ function parseCllctCategoryHtml(htmlText, { url, sourceId, sourceName }) {
     });
   }
 
+  // Dedupe & cap
   const map = new Map();
   for (const it of items) if (!map.has(it.url)) map.set(it.url, it);
   return Array.from(map.values()).slice(0, MAX_ITEMS_PER_FEED);
@@ -237,20 +242,19 @@ export default function News() {
 
   const [query, setQuery] = useState("");
 
-  // Handle toggle logic (mutually exclusive & state restore)
+  // If one toggle is turned on, turn the other off
   useEffect(() => {
-    // If one is turned on, turn the other off
     if (cllctOnly && majorsOnly) {
-      // last change wins; prefer the latest one and switch the other off
       setMajorsOnly(false);
     }
   }, [cllctOnly, majorsOnly]);
 
+  // Apply/restore toggle selections
   useEffect(() => {
     const anyToggleOn = cllctOnly || majorsOnly;
 
     if (anyToggleOn) {
-      // store current custom selection once when entering a toggle mode
+      // store current custom selection when entering a toggle mode
       prevSourcesRef.current = activeSources;
       if (cllctOnly) setActiveSources(CLLCT_IDS);
       else if (majorsOnly) setActiveSources(MAJOR_IDS);
@@ -335,6 +339,21 @@ export default function News() {
             flexWrap: "wrap",
           }}
         >
+          {/* Home button */}
+          <Link
+            to="/"
+            style={{
+              padding: "6px 12px",
+              borderRadius: 8,
+              background: COLORS.brand,
+              color: "#fff",
+              fontWeight: 600,
+              textDecoration: "none",
+            }}
+          >
+            Home
+          </Link>
+
           <h1 style={{ margin: 0, fontSize: 22, color: COLORS.text }}>
             <span style={{ color: COLORS.brand, fontWeight: 800 }}>Sports</span> News
           </h1>
@@ -367,7 +386,7 @@ export default function News() {
                 setActiveSources((prev) =>
                   prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
                 );
-                // turning a manual source on/off exits quick filters
+                // manual change exits quick filters
                 setCllctOnly(false);
                 setMajorsOnly(false);
               }}
@@ -470,7 +489,7 @@ function SourcePicker({ feeds, active, onToggle, onAll, onNone }) {
             style={{
               padding: "6px 10px",
               borderRadius: 10,
-              border: `1px solid ${selected ? COLORS.brand : COLORS.border}`,
+              border: `1px solid ${selected ? COLORS.brand : COLORS.border}`, // ✅ fixed
               background: selected ? COLORS.brand : "#FFFFFF",
               color: selected ? "#FFFFFF" : COLORS.text,
               fontWeight: 600,
