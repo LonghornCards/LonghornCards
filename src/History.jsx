@@ -100,17 +100,17 @@ export default function History() {
 
         {/* Double-spaced introduction */}
         <p style={{ fontSize: "1.15rem", lineHeight: 2 }}>
-          <strong>Sports Trading Cards</strong> have a long and storied history
-          that spans more than 150 years. The global sports trading cards market
+          <strong>Sports Trading Cards</strong> have a long and illustrious history
+          that spans nearly two centuries. The global sports trading cards market
           size was valued at <strong>$14.9 billion in 2024</strong> and is
           projected to reach <strong>$52.1 billion by 2034</strong>, growing at
-          a <strong>CAGR of 13%</strong> from 2024 to 2034[1]. Trading cards overall are still recovering from the
-          unprecedented boom in popularity during the pandemic. Since their
+          a <strong>CAGR of 13%</strong> from 2024 to 2034[1]. Trading cards overall are still reboundinng from the
+          massive increase in popularity during the pandemic. Since their
           humble beginning, sports cards have evolved from simple advertising
           tools to multi-million-dollar investments, but the present-day
-          overabundance of “rare” cards due to artificial scarcity increases
+          oversupply of “rare” cards due to artificial scarcity increases
           risks of entering a new “junk wax era”. The following pages dive
-          deeper into the history of sports trading cards.
+          deeper into the history and  innovations of sports trading cards.
         </p>
 
         {/* Bigger button bar BELOW the text */}

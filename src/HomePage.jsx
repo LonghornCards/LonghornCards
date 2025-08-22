@@ -55,6 +55,19 @@ export default function HomePage() {
           Feeds
         </Link>
 
+        {/* ✅ New News link */}
+        <Link
+          to="/news"
+          style={{
+            textDecoration: "none",
+            color: burntOrange,
+            fontWeight: "bold",
+            fontSize: "1.1rem",
+          }}
+        >
+          News
+        </Link>
+
         <Link
           to="/history"
           style={{
@@ -66,6 +79,7 @@ export default function HomePage() {
         >
           History of Sports Cards
         </Link>
+
         <Link
           to="/research"
           style={{
@@ -139,7 +153,13 @@ export default function HomePage() {
         >
           Shop Our eBay Store
         </h2>
-        <p style={{ fontSize: "1.1rem", marginBottom: "20px", lineHeight: "1.6" }}>
+        <p
+          style={{
+            fontSize: "1.1rem",
+            marginBottom: "20px",
+            lineHeight: "1.6",
+          }}
+        >
           Discover our latest listings of baseball, football, and basketball
           cards as well as unique sports and historical memorabilia — all
           available exclusively on eBay.
@@ -187,8 +207,15 @@ export default function HomePage() {
         >
           Download History of Sports Trading Cards
         </h2>
-        <p style={{ fontSize: "1.1rem", marginBottom: "20px", lineHeight: "1.6" }}>
-          Learn more about the evolution of trading cards through our comprehensive guide.
+        <p
+          style={{
+            fontSize: "1.1rem",
+            marginBottom: "20px",
+            lineHeight: "1.6",
+          }}
+        >
+          Learn more about the evolution of trading cards through our
+          comprehensive guide.
         </p>
         <a
           href="/History_Of_Trading_Cards.pdf"
