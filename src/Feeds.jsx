@@ -14,28 +14,21 @@ const SOURCES = [
   { label: "Sports Cards Live", url: "https://open.spotify.com/show/3iMRU41zxzhRF1SYkDqyET?si=nQsrNGU2T9KBRPuxCC8WDw" },
   { label: "Sports Card Nation Podcast", url: "https://open.spotify.com/show/0wbBkz4tQhT2wEjdUbFck1?si=E4hAw2AnRHmW4CtILTOg-g" },
   { label: "Geoff Wilson Show", url: "https://open.spotify.com/show/19cthTVIfykIAQej3FW3j9?si=1-DzbbcBQ5OhCsB8grah1g" },
-
-  // YouTube videos
-  { label: "THE BEST NATIONAL SPORTS CARD SHOW EVER (2025)", url: "https://youtu.be/V4h4qOV4as0?si=j7kamEeQAAy_oQzt" },
-  { label: "10 Levels Of Sports Cards", url: "https://youtu.be/JPV6-cXBof0?si=9Pwv_MkoETae7mUC" },
-  { label: "The BRUTAL TRUTHS of Reselling Sports Cards", url: "https://youtu.be/xBvtI1EyFT0?si=6bqWPqeEI3QMw23N" },
-  { label: "Can You Make Money Buying Retail Sports Cards?", url: "https://youtu.be/r0lhscS2TPI?si=KfWDKH14fk0q0ZB5" },
-  { label: "Sports Card Content isn't Dead... It's Just Lazy", url: "https://youtu.be/rs9qZKGX2PU?si=Yh_KOZhpmvM3Z3gP" },
-
-  // Article & feeds
-      { label: "MC Mondays Showcase: High-End Sports Card Auction...", url: "https://www.youtube.com/live/_T2HCB2XZoU?si=sf55BFdl1A7fPR_U" },
-
-  // Spreaker widget (raw iframe)
-  
-  // --- Newly added (bottom) Spotify shows ---
   { label: "SlabStox Sports Card Trading", url: "https://open.spotify.com/show/4UIahi5DX98Oi3cu9rOAgO?si=NRscn2p-S2eCed4pB6IKSg" },
   { label: "Card Talk", url: "https://open.spotify.com/show/6mvFfYu8mskoRggljcpe5f?si=dJdo9f40TQiUC6hPSbfkEw" },
   { label: "The True Sports Cards Show", url: "https://open.spotify.com/show/38050UAnhnni0YQjINlQdO?si=PnjW7xyjS3K1pYPN3k2_Kg" },
   { label: "Cards To The Moon", url: "https://open.spotify.com/show/7cRwSepRkdaHsnFvhXOBmF?si=BoQe5VWRRNi9qN8yzyJ-WQ" },
   { label: "Sports Card Lessons Podcast", url: "https://open.spotify.com/show/295SzYQUu19Uk4JjtTjonx?si=_owrz5tQSCC698_Mg6G3ZQ" },
   { label: "Sports Card Madness", url: "https://open.spotify.com/show/48hzXpdyJqKsCpDJeHfBC7?si=e-xwIQiAS0a1OpFIdLWLGA" },
-,
   { label: "Welcome to Stacking Slabs", url: "https://open.spotify.com/episode/5RuCjXb1E3osmAGaMuWF5M?si=f55Pa-6-Te6jmYFGoeKutA" },
+
+  // YouTube videos (moved to bottom)
+  { label: "THE BEST NATIONAL SPORTS CARD SHOW EVER (2025)", url: "https://youtu.be/V4h4qOV4as0?si=j7kamEeQAAy_oQzt" },
+  { label: "10 Levels Of Sports Cards", url: "https://youtu.be/JPV6-cXBof0?si=9Pwv_MkoETae7mUC" },
+  { label: "The BRUTAL TRUTHS of Reselling Sports Cards", url: "https://youtu.be/xBvtI1EyFT0?si=6bqWPqeEI3QMw23N" },
+  { label: "Can You Make Money Buying Retail Sports Cards?", url: "https://youtu.be/r0lhscS2TPI?si=KfWDKH14fk0q0ZB5" },
+  { label: "Sports Card Content isn't Dead... It's Just Lazy", url: "https://youtu.be/rs9qZKGX2PU?si=Yh_KOZhpmvM3Z3gP" },
+  { label: "MC Mondays Showcase: High-End Sports Card Auction...", url: "https://www.youtube.com/live/_T2HCB2XZoU?si=sf55BFdl1A7fPR_U" },
 ];
 
 function getEmbedUrl(url) {
@@ -70,13 +63,9 @@ function getEmbedUrl(url) {
         const id = u.pathname.split("/").filter(Boolean)[1];
         return id ? `https://www.youtube.com/embed/${id}` : url;
       }
-      // Channels using @handle can't be reliably embedded without channel ID.
-      // We'll try loading the channel page directly (may be blocked by X-Frame-Options),
-      // and show an Open button as a fallback.
       return url;
     }
 
-    // Everything else: return as-is. If the site blocks framing, user can click Open.
     return url;
   } catch (e) {
     return url;
@@ -84,15 +73,11 @@ function getEmbedUrl(url) {
 }
 
 function getSuggestedHeight(url) {
-  // Compact Spotify embed heights
   if (url.includes("open.spotify.com/show")) return 232;
   if (url.includes("open.spotify.com/episode")) return 152;
-
-  // Slightly taller for channels and generic pages
   if (url.includes("youtube.com/@") || url.includes("podbean.com") || url.includes("wethehobby.com") || url.includes("feeds.transistor.fm") || url.includes("spreaker.com")) {
     return 600;
   }
-  // Default height for single videos/players
   return 400;
 }
 
@@ -202,10 +187,7 @@ export default function Feeds() {
               </a>
             </div>
             {item.rawIframe ? (
-              <div
-                // eslint-disable-next-line react/no-danger
-                dangerouslySetInnerHTML={{ __html: item.rawIframe }}
-              />
+              <div dangerouslySetInnerHTML={{ __html: item.rawIframe }} />
             ) : (
               <iframe
                 title={`${item.label} (embedded)`}
