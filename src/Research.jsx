@@ -1,14 +1,14 @@
 // src/Research.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
-// ✅ Monthly Google Trends ranks
+// ✅ Monthly Google Trends ranks (full time series from the workbook)
 import trendsUrl from "./assets/Google_Trends_Ranks.xlsx?url";
 import keyReturnsUrl from "./assets/Key_Player_Returns.xlsx?url";
 // ✅ Fundamentals (Rank + Change)
 import fundamentalsUrl from "./assets/Key_Player_Fundamentals.xlsx?url";
 
 export default function Research() {
-  const [rows, setRows] = useState([]);       // Monthly Google Trends RANKS rows
+  const [rows, setRows] = useState([]);       // Monthly Google Trends RANKS rows (full range)
   const [columns, setColumns] = useState([]); // ["Date", "Player (LEAGUE)", ...]
   const [error, setError] = useState("");
   const [selectedPlayers, setSelectedPlayers] = useState([]); // for the charts
@@ -22,7 +22,7 @@ export default function Research() {
 
   const burntOrange = "#BF5700";
 
-  // -------- Load MONTHLY Google Trends RANKS workbook ----------
+  // -------- Load MONTHLY Google Trends RANKS workbook (entire time series) ----------
   useEffect(() => {
     (async () => {
       try {
@@ -75,7 +75,7 @@ export default function Research() {
           firstMonthCol++;
         }
 
-        // Build a list of [colIndex, isoDate] for all month columns
+        // Build a list of [colIndex, isoDate] for all month columns (recognizes "8/1/2020", "Aug 2020", Excel serials, etc.)
         const monthCols = [];
         for (let c = firstMonthCol; c < headers.length; c++) {
           const label = headers[c];
@@ -89,7 +89,7 @@ export default function Research() {
         const colOrder = ["Date"];
         const rowMap = new Map(); // key: ISO "YYYY-MM-DD" => { Date, "Player (LEAGUE)": rank }
 
-        // Iterate player rows
+        // Iterate player rows (pull ALL months present in the sheet)
         for (let r = headerRowIdx + 1; r < aoa.length; r++) {
           const row = aoa[r];
           if (!row) continue;
@@ -288,7 +288,7 @@ export default function Research() {
     })();
   }, []);
 
-  // With monthly ranks, pass straight through as "rankedRows"
+  // With monthly ranks, pass straight through as "rankedRows" (full series)
   const rankedRows = rows;
 
   // Latest Google Trends rank per player (name without "(LEAGUE)")
@@ -392,17 +392,23 @@ export default function Research() {
     return map;
   }, [fundamentals]);
 
+  // 🔒 NEW: Set of players that actually exist in Key_Player_Returns.xlsx
+  // (If a player is NOT in this set, exclude them entirely from the scatter/unifiedData)
+  const returnsKeySet = useMemo(() => {
+    const s = new Set();
+    for (const d of techScores) s.add(toASCII(d.player).toLowerCase());
+    for (const d of rsPoints) s.add(toASCII(d.player).toLowerCase());
+    return s;
+  }, [techScores, rsPoints]);
+
   const unifiedData = useMemo(() => {
+    // Only include players that have data in Key_Player_Returns.xlsx
     const techMap = new Map(techScaledList.map((d) => [toASCII(d.player).toLowerCase(), d.techScaled]));
     const rsMap = new Map(rsPoints.map((d) => [toASCII(d.player).toLowerCase(), { rs3: d.rs3, rs12: d.rs12 }]));
     const rsRankMap = new Map(rsRankedPoints.map((d) => [toASCII(d.player).toLowerCase(), { rs3Rank: d.rs3Rank, rs12Rank: d.rs12Rank }]));
-    const keys = new Set([
-      ...techMap.keys(),
-      ...rsMap.keys(),
-      ...rsRankMap.keys(),
-      ...latestInfoMap.keys(),
-      ...fundamentalMap.keys(),
-    ]);
+
+    // 🚫 Critical change: keys limited to returnsKeySet
+    const keys = new Set([...returnsKeySet]);
 
     const out = [];
     for (const k of keys) {
@@ -441,6 +447,7 @@ export default function Research() {
       });
     }
 
+    // Keep only rows that have at least one numeric metric
     return out.filter((d) =>
       [
         d.techScaled,
@@ -455,7 +462,7 @@ export default function Research() {
         d.rs12Rank,
       ].some(Number.isFinite)
     );
-  }, [techScaledList, rsPoints, rsRankedPoints, latestInfoMap, fundamentalMap]);
+  }, [techScaledList, rsPoints, rsRankedPoints, latestInfoMap, fundamentalMap, returnsKeySet]);
 
   if (error) {
     return (
@@ -510,7 +517,7 @@ export default function Research() {
          Research:  Fundamental, Technical & Sentiment
       </h1>
 
-      {/* --- Unified Scatterplot (now with pinch + box zoom) --- */}
+      {/* --- Unified Scatterplot (pinch + box zoom) --- */}
       <div
         style={{
           marginTop: 6,
@@ -525,7 +532,6 @@ export default function Research() {
           Composite Scatter — Choose X/Y and League
         </h2>
 
-        {/* ⬇︎ Full-width & interactive (pinch, wheel, box-zoom) */}
         <UnifiedScatter data={unifiedData} burntOrange={burntOrange} />
 
         <div style={{ fontSize: 12, color: "#666", marginTop: 6, whiteSpace: "pre-wrap" }}>
@@ -774,7 +780,7 @@ function MultiSelect({
   );
 }
 
-/** --- Line Chart Section (BAR REMOVED, LINE IS FULL-WIDTH) --- **/
+/** --- Line Chart Section (BAR REMOVED, LINE IS FULL-WIDTH; uses FULL series) --- **/
 function ChartSection({ rankedRows, columns, selectedPlayers, setSelectedPlayers, burntOrange }) {
   const [chartLeague] = useState("All"); // reserved for future filtering
   const parseCol = (c) => {
@@ -819,7 +825,7 @@ function ChartSection({ rankedRows, columns, selectedPlayers, setSelectedPlayers
   const innerW = WIDTH - MARGIN.left - MARGIN.right;
   const innerH = HEIGHT - MARGIN.top - MARGIN.bottom;
 
-  const n = rankedRows.length;
+  const n = rankedRows.length; // ✅ FULL number of months in the file
   const xLine = (i) => (n <= 1 ? 0 : (i / (n - 1)) * innerW);
   const yRank = (v) => innerH - (Math.max(0, Math.min(100, v)) / 100) * innerH;
 
@@ -828,6 +834,7 @@ function ChartSection({ rankedRows, columns, selectedPlayers, setSelectedPlayers
     "#8c564b","#e377c2","#7f7f7f","#bcbd22","#17becf"
   ];
 
+  // Build path for every selected player using ALL points in rankedRows
   const linePaths = useMemo(() => {
     const makePathD = (col) => {
       let d = "";
@@ -842,6 +849,13 @@ function ChartSection({ rankedRows, columns, selectedPlayers, setSelectedPlayers
     };
     return selectedPlayers.map((col, idx) => ({ col, d: makePathD(col), color: COLORS[idx % COLORS.length] }));
   }, [selectedPlayers, rankedRows, n]);
+
+  // Generate evenly spaced X labels over the FULL time range
+  const xtickCount = 8;
+  const xTickIdx = useMemo(() => {
+    if (n <= 1) return [0];
+    return Array.from({ length: xtickCount }, (_, k) => Math.round((k / (xtickCount - 1)) * (n - 1)));
+  }, [n]);
 
   return (
     <div style={{ padding: "12px", borderTop: `1px solid ${burntOrange}`, background: "#fff", marginTop: 12 }}>
@@ -871,7 +885,7 @@ function ChartSection({ rankedRows, columns, selectedPlayers, setSelectedPlayers
         </div>
       )}
 
-      {/* Full-width Line Chart */}
+      {/* Full-width Line Chart (ALL months) */}
       <div ref={wrapRef} style={{ width: "100%" }}>
         <svg width={WIDTH} height={HEIGHT} role="img" aria-label="Player comparison line chart">
           <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
@@ -885,9 +899,8 @@ function ChartSection({ rankedRows, columns, selectedPlayers, setSelectedPlayers
             ))}
             <line x1={0} y1={innerH} x2={innerW} y2={innerH} stroke="#ccc" />
 
-            {/* X ticks (sample across the series) */}
-            {Array.from({ length: 8 }).map((_, k) => {
-              const i = Math.round((k / 7) * (n - 1));
+            {/* X ticks (sample across the FULL series) */}
+            {xTickIdx.map((i) => {
               const date = rankedRows[i]?.Date;
               return (
                 <g key={i} transform={`translate(${xLine(i)},${innerH})`}>
@@ -1556,6 +1569,7 @@ function BoxPlotAllPlayers({ rankedRows, columns, burntOrange }) {
 /** --- Shared helpers & hooks --- **/
 function parseMonthHeader(h) {
   if (h == null) return null;
+  // Excel serial date
   if (typeof h === "number") {
     const epoch = new Date(Date.UTC(1899, 11, 30));
     const ms = h * 24 * 60 * 60 * 1000;
@@ -1570,6 +1584,7 @@ function parseMonthHeader(h) {
   const s = String(h).trim();
   if (!s) return null;
 
+  // "Aug 2020" / "August 2020" / "Aug-20"
   const m1 = s.match(/^([A-Za-z]{3,})[-\s]?(\d{2,4})$/);
   if (m1) {
     const month = monthIndexFromName(m1[1]);
@@ -1580,6 +1595,7 @@ function parseMonthHeader(h) {
     }
   }
 
+  // "8/1/2020" etc.
   const d2 = new Date(s);
   if (!isNaN(d2)) return toMonthStartISO(d2);
   return null;
