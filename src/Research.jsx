@@ -396,7 +396,6 @@ export default function Research() {
     const techMap = new Map(techScaledList.map((d) => [toASCII(d.player).toLowerCase(), d.techScaled]));
     const rsMap = new Map(rsPoints.map((d) => [toASCII(d.player).toLowerCase(), { rs3: d.rs3, rs12: d.rs12 }]));
     const rsRankMap = new Map(rsRankedPoints.map((d) => [toASCII(d.player).toLowerCase(), { rs3Rank: d.rs3Rank, rs12Rank: d.rs12Rank }]));
-
     const keys = new Set([
       ...techMap.keys(),
       ...rsMap.keys(),
@@ -511,7 +510,7 @@ export default function Research() {
          Research:  Fundamental, Technical & Sentiment
       </h1>
 
-      {/* --- Unified Scatterplot --- */}
+      {/* --- Unified Scatterplot (now with pinch + box zoom) --- */}
       <div
         style={{
           marginTop: 6,
@@ -523,14 +522,19 @@ export default function Research() {
         }}
       >
         <h2 style={{ color: burntOrange, margin: "0 0 10px 0", fontSize: 20, fontWeight: 800 }}>
-          Unified Scatter — Choose X/Y and League
+          Composite Scatter — Choose X/Y and League
         </h2>
 
-        {/* ⬇︎ Now full-width & responsive */}
+        {/* ⬇︎ Full-width & interactive (pinch, wheel, box-zoom) */}
         <UnifiedScatter data={unifiedData} burntOrange={burntOrange} />
 
         <div style={{ fontSize: 12, color: "#666", marginTop: 6, whiteSpace: "pre-wrap" }}>
-{`Variables available:
+{`Gestures:
+• Touch: pinch with two fingers to zoom; drag while pinching to focus on an area.
+• Mouse: scroll wheel to zoom at cursor; click-drag to draw a box and zoom to it.
+• Double-click or use "Reset Zoom" to go back.
+
+Variables available:
 - Technical Rank (0–100; higher = better)
 - Google Trends Rank (latest, 1–100; higher = better)
 - Composite Rank (Tech & Google avg) — 2-source
@@ -904,7 +908,7 @@ function ChartSection({ rankedRows, columns, selectedPlayers, setSelectedPlayers
   );
 }
 
-/** --- Unified Scatter (FULL-WIDTH responsive) --- **/
+/** --- Unified Scatter (FULL-WIDTH responsive) + Pinch / Wheel / Box-Zoom --- **/
 function UnifiedScatter({ data, burntOrange }) {
   const VARS = [
     { key: "techScaled", label: "Technical Rank (0–100)", fixed: [0, 100] },
@@ -925,40 +929,85 @@ function UnifiedScatter({ data, burntOrange }) {
 
   // Measure container width
   const [wrapRef, widthPx] = useContainerWidth(600); // min width
-  const svgW = widthPx;                               // full container width
+  const svgW = widthPx;                                // full container width
   const svgH = Math.max(420, Math.round(svgW * 0.45)); // scale height with width
 
   const filtered = useMemo(() => data.filter((d) => (league === "All" ? true : d.league === league)), [data, league]);
-  const points = useMemo(
+  const rawPoints = useMemo(
     () => filtered.map((d) => ({ ...d, x: d[xKey], y: d[yKey] })).filter((d) => Number.isFinite(d.x) && Number.isFinite(d.y)),
     [filtered, xKey, yKey]
   );
 
+  // Base extents from data/variable choice
   const xVar = VARS.find((v) => v.key === xKey) || VARS[0];
   const yVar = VARS.find((v) => v.key === yKey) || VARS[1];
+  const baseXExtent = xVar.fixed ?? autoExtent(rawPoints.map((p) => p.x));
+  const baseYExtent = yVar.fixed ?? autoExtent(rawPoints.map((p) => p.y));
 
-  const xExtent = xVar.fixed ?? autoExtent(points.map((p) => p.x));
-  const yExtent = yVar.fixed ?? autoExtent(points.map((p) => p.y));
+  // View extents (zoomable)
+  const [viewX, setViewX] = useState(baseXExtent);
+  const [viewY, setViewY] = useState(baseYExtent);
+
+  // Reset view when variable/league/data change
+  useEffect(() => {
+    setViewX(baseXExtent);
+    setViewY(baseYExtent);
+  }, [xKey, yKey, league, svgW, svgH, baseXExtent[0], baseXExtent[1], baseYExtent[0], baseYExtent[1]]); // eslint-disable-line
 
   const M = { top: 32, right: 20, bottom: 60, left: 72 };
   const W = svgW - M.left - M.right;
   const H = svgH - M.top - M.bottom;
 
   const xScale = (v) => {
-    const [a, b] = xExtent;
+    const [a, b] = viewX;
     if (a === b) return W / 2;
     return ((v - a) / (b - a)) * W;
   };
   const yScale = (v) => {
-    const [a, b] = yExtent;
+    const [a, b] = viewY;
     if (a === b) return H / 2;
     return H - ((v - a) / (b - a)) * H;
   };
 
-  const xTicks = ticksFromExtent(xExtent, 6);
-  const yTicks = ticksFromExtent(yExtent, 6);
+  const xInv = (px) => {
+    const [a, b] = viewX;
+    return a + (px / W) * (b - a);
+  };
+  const yInv = (py) => {
+    const [a, b] = viewY;
+    // py measured from top (0 at top), invert y
+    return a + ((H - py) / H) * (b - a);
+  };
 
-  // OLS line
+  const clampExtentToBase = (ex, base) => {
+    let [a, b] = ex[0] <= ex[1] ? ex : [ex[1], ex[0]];
+    const [ba, bb] = base;
+    const span = Math.max(1e-6, Math.abs(b - a));
+    // clamp into [ba, bb]
+    a = Math.max(ba, Math.min(a, bb - 1e-6));
+    b = Math.min(bb, Math.max(b, ba + 1e-6));
+    // ensure min span
+    if (b - a < 1e-6) {
+      const mid = (a + b) / 2;
+      a = mid - span / 2;
+      b = mid + span / 2;
+    }
+    return [a, b];
+  };
+
+  // Visible points (within current view)
+  const points = useMemo(
+    () =>
+      rawPoints.filter(
+        (p) => p.x >= Math.min(...viewX) && p.x <= Math.max(...viewX) && p.y >= Math.min(...viewY) && p.y <= Math.max(...viewY)
+      ),
+    [rawPoints, viewX, viewY]
+  );
+
+  const xTicks = ticksFromExtent(viewX, 6);
+  const yTicks = ticksFromExtent(viewY, 6);
+
+  // OLS line (on currently visible points)
   const { m, b } = useMemo(() => {
     const xs = points.map((p) => p.x);
     const ys = points.map((p) => p.y);
@@ -977,10 +1026,10 @@ function UnifiedScatter({ data, burntOrange }) {
     return { m: slope, b: intercept };
   }, [points]);
 
-  // Label layout
+  // Label layout (for visible points)
   const FONT_SIZE = 11;
   const estWidth = (text) => Math.max(6, Math.round(text.length * FONT_SIZE * 0.55));
-  const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+  const clampPix = (v, min, max) => Math.max(min, Math.min(max, v));
   const rectsOverlap = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 
   const labels = useMemo(() => {
@@ -1011,11 +1060,10 @@ function UnifiedScatter({ data, burntOrange }) {
         const cx = d.sx + dx;
         const cy = d.sy + dy;
 
-        const xLeft = clamp(cx - d.w / 2, 0, W - d.w);
-        const yTop = clamp(cy - d.h + 2, 0, H - d.h);
+        const xLeft = clampPix(cx - d.w / 2, 0, W - d.w);
+        const yTop = clampPix(cy - d.h + 2, 0, H - d.h);
         const rect = { x: xLeft, y: yTop, w: d.w, h: d.h };
 
-        // keep inside + collision test
         if (rect.x < 0 || rect.x + rect.w > W || rect.y < 0 || rect.y + rect.h > H) continue;
         if (placed.some((r) => rectsOverlap(rect, r))) continue;
 
@@ -1025,8 +1073,8 @@ function UnifiedScatter({ data, burntOrange }) {
       }
 
       if (!chosen) {
-        const xLeft = clamp(d.sx - d.w / 2, 0, W - d.w);
-        const yTop = clamp(d.sy - d.h + 2, 0, H - d.h);
+        const xLeft = clampPix(d.sx - d.w / 2, 0, W - d.w);
+        const yTop = clampPix(d.sy - d.h + 2, 0, H - d.h);
         placedRect = { x: xLeft, y: yTop, w: d.w, h: d.h };
         chosen = { x: xLeft + d.w / 2, y: yTop + d.h - 2 };
       }
@@ -1041,13 +1089,149 @@ function UnifiedScatter({ data, burntOrange }) {
   const xMid = W / 2;
   const yMid = H / 2;
 
+  // ---------- Interactions: pinch, wheel, box-zoom ----------
+  const overlayRef = useRef(null);
+  const pointersRef = useRef(new Map()); // id -> {x,y}
+  const pinchRef = useRef(null);         // {startDist, startViewX, startViewY, centerData}
+  const [brush, setBrush] = useState(null); // {x0,y0,x1,y1} in pixels
+
+  const getInnerXY = (e) => {
+    const el = overlayRef.current;
+    const rect = el.getBoundingClientRect();
+    const x = clampPix(e.clientX - rect.left, 0, W);
+    const y = clampPix(e.clientY - rect.top, 0, H);
+    return { x, y };
+  };
+
+  const applyZoom = (cxPix, cyPix, scaleX, scaleY) => {
+    const cx = xInv(cxPix);
+    const cy = yInv(cyPix);
+    const [xa, xb] = viewX;
+    const [ya, yb] = viewY;
+
+    const nxA = cx + (xa - cx) * scaleX;
+    const nxB = cx + (xb - cx) * scaleX;
+    const nyA = cy + (ya - cy) * scaleY;
+    const nyB = cy + (yb - cy) * scaleY;
+
+    const nextX = clampExtentToBase([nxA, nxB], baseXExtent);
+    const nextY = clampExtentToBase([nyA, nyB], baseYExtent);
+
+    setViewX(nextX);
+    setViewY(nextY);
+  };
+
+  const onWheel = (e) => {
+    e.preventDefault();
+    if (!W || !H) return;
+    // Zoom at cursor. Positive deltaY => zoom out
+    const scale = Math.exp(e.deltaY * 0.001);
+    const { x, y } = getInnerXY(e);
+    applyZoom(x, y, scale, scale);
+  };
+
+  const onDblClick = () => {
+    setViewX(baseXExtent);
+    setViewY(baseYExtent);
+    setBrush(null);
+  };
+
+  const onPointerDown = (e) => {
+    const target = overlayRef.current;
+    target.setPointerCapture(e.pointerId);
+    const pos = getInnerXY(e);
+    pointersRef.current.set(e.pointerId, pos);
+
+    if (pointersRef.current.size === 2) {
+      // Begin pinch
+      const [p1, p2] = [...pointersRef.current.values()];
+      const dx = p1.x - p2.x;
+      const dy = p1.y - p2.y;
+      const dist = Math.hypot(dx, dy);
+      const cxPix = (p1.x + p2.x) / 2;
+      const cyPix = (p1.y + p2.y) / 2;
+      pinchRef.current = {
+        startDist: Math.max(1, dist),
+        startViewX: viewX.slice(),
+        startViewY: viewY.slice(),
+        centerDataX: xInv(cxPix),
+        centerDataY: yInv(cyPix),
+      };
+      setBrush(null); // cancel any brush
+    } else if (pointersRef.current.size === 1 && e.pointerType !== "touch" && e.button === 0) {
+      // Mouse box-zoom start
+      setBrush({ x0: pos.x, y0: pos.y, x1: pos.x, y1: pos.y });
+    }
+  };
+
+  const onPointerMove = (e) => {
+    if (!pointersRef.current.has(e.pointerId)) return;
+    const pos = getInnerXY(e);
+    pointersRef.current.set(e.pointerId, pos);
+
+    if (pointersRef.current.size === 2 && pinchRef.current) {
+      // Pinch zoom
+      const [p1, p2] = [...pointersRef.current.values()];
+      const dx = p1.x - p2.x;
+      const dy = p1.y - p2.y;
+      const dist = Math.hypot(dx, dy);
+      const scale = pinchRef.current.startDist / Math.max(1, dist); // >1 => zoom in
+      const cx = pinchRef.current.centerDataX;
+      const cy = pinchRef.current.centerDataY;
+
+      const svx = pinchRef.current.startViewX;
+      const svy = pinchRef.current.startViewY;
+
+      const nxA = cx + (svx[0] - cx) * scale;
+      const nxB = cx + (svx[1] - cx) * scale;
+      const nyA = cy + (svy[0] - cy) * scale;
+      const nyB = cy + (svy[1] - cy) * scale;
+
+      setViewX(clampExtentToBase([nxA, nxB], baseXExtent));
+      setViewY(clampExtentToBase([nyA, nyB], baseYExtent));
+    } else if (pointersRef.current.size === 1 && brush) {
+      // Update box-zoom rectangle
+      setBrush((b) => (b ? { ...b, x1: pos.x, y1: pos.y } : b));
+    }
+  };
+
+  const onPointerUpCancel = (e) => {
+    const hadPinch = pinchRef.current && pointersRef.current.size === 2;
+    pointersRef.current.delete(e.pointerId);
+
+    if (hadPinch && pointersRef.current.size < 2) {
+      pinchRef.current = null;
+    }
+
+    if (brush && (e.type === "pointerup" || e.type === "pointercancel")) {
+      const { x0, y0, x1, y1 } = brush;
+      const minSel = 6; // pixels
+      const w = Math.abs(x1 - x0);
+      const h = Math.abs(y1 - y0);
+      if (w > minSel && h > minSel) {
+        const xLo = Math.min(x0, x1);
+        const xHi = Math.max(x0, x1);
+        const yLo = Math.min(y0, y1);
+        const yHi = Math.max(y0, y1);
+        const newX = clampExtentToBase([xInv(xLo), xInv(xHi)], baseXExtent);
+        const newY = clampExtentToBase([yInv(yHi), yInv(yLo)], baseYExtent); // y inverted
+        setViewX(newX);
+        setViewY(newY);
+      }
+      setBrush(null);
+    }
+  };
+
+  // Styles for select controls
+  const selectS = selectStyle(burntOrange);
+
   return (
     <div ref={wrapRef} style={{ width: "100%" }}>
       {/* Controls */}
       <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap", marginBottom: 10 }}>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           <label style={{ fontWeight: 700, color: burntOrange }}>X:</label>
-          <select value={xKey} onChange={(e) => setXKey(e.target.value)} style={selectStyle(burntOrange)}>
+          <select value={xKey} onChange={(e) => setXKey(e.target.value)} style={selectS}>
             {VARS.map((v) => (
               <option key={v.key} value={v.key}>{v.label}</option>
             ))}
@@ -1056,7 +1240,7 @@ function UnifiedScatter({ data, burntOrange }) {
 
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           <label style={{ fontWeight: 700, color: burntOrange }}>Y:</label>
-          <select value={yKey} onChange={(e) => setYKey(e.target.value)} style={selectStyle(burntOrange)}>
+          <select value={yKey} onChange={(e) => setYKey(e.target.value)} style={selectS}>
             {VARS.map((v) => (
               <option key={v.key} value={v.key}>{v.label}</option>
             ))}
@@ -1072,10 +1256,38 @@ function UnifiedScatter({ data, burntOrange }) {
             </label>
           ))}
         </div>
+
+        <button
+          type="button"
+          onClick={() => {
+            setViewX(baseXExtent);
+            setViewY(baseYExtent);
+            setBrush(null);
+          }}
+          style={{
+            border: `1px solid ${burntOrange}`,
+            background: "#fff",
+            color: burntOrange,
+            padding: "6px 12px",
+            borderRadius: 999,
+            cursor: "pointer",
+            fontWeight: 700,
+          }}
+        >
+          Reset Zoom
+        </button>
       </div>
 
       {/* Chart */}
-      <svg width={svgW} height={svgH} role="img" aria-label="Unified Scatterplot">
+      <svg
+        width={svgW}
+        height={svgH}
+        role="img"
+        aria-label="Unified Scatterplot"
+        onWheel={onWheel}
+        onDoubleClick={onDblClick}
+        style={{ touchAction: "none" }} // allow pinch/zoom gestures
+      >
         <g transform={`translate(${M.left},${M.top})`}>
           {/* Quadrants */}
           <rect x={0} y={0} width={xMid} height={yMid} fill="blue" opacity="0.05" />
@@ -1087,7 +1299,7 @@ function UnifiedScatter({ data, burntOrange }) {
           <line x1={0} y1={H} x2={W} y2={H} stroke="#ccc" />
           <line x1={0} y1={0} x2={0} y2={H} stroke="#ccc" />
 
-          {/* Grid + Ticks */}
+          {/* Grid + Ticks (use view extents) */}
           {xTicks.map((t, i) => (
             <g key={`xt-${i}`} transform={`translate(${xScale(t)},0)`}>
               <line y1={0} y2={H} stroke="#eee" />
@@ -1104,10 +1316,10 @@ function UnifiedScatter({ data, burntOrange }) {
           {/* OLS trendline */}
           {Number.isFinite(m) && Number.isFinite(b) && (
             <line
-              x1={xScale(xExtent[0])}
-              y1={yScale(m * xExtent[0] + b)}
-              x2={xScale(xExtent[1])}
-              y2={yScale(m * xExtent[1] + b)}
+              x1={xScale(viewX[0])}
+              y1={yScale(m * viewX[0] + b)}
+              x2={xScale(viewX[1])}
+              y2={yScale(m * viewX[1] + b)}
               stroke="#444"
               strokeDasharray="6,4"
             />
@@ -1116,6 +1328,7 @@ function UnifiedScatter({ data, burntOrange }) {
           {/* Labels */}
           {labels.map((d, idx) => (
             <g key={`${d.player}-${idx}`}>
+              <circle cx={xScale(d.x)} cy={yScale(d.y)} r={3} fill={burntOrange} opacity="0.9" />
               <text x={d.tx} y={d.ty} fontSize={11} textAnchor="middle" fill="#333">
                 {d.player}
               </text>
@@ -1130,6 +1343,33 @@ function UnifiedScatter({ data, burntOrange }) {
           <text transform="rotate(-90)" x={-H / 2} y={-56} textAnchor="middle" fontSize="14" fill="#333" fontWeight="700">
             {yVar.label}
           </text>
+
+          {/* Interaction overlay (captures pointer/pinch/box-zoom) */}
+          <rect
+            ref={overlayRef}
+            x={0}
+            y={0}
+            width={W}
+            height={H}
+            fill="transparent"
+            style={{ touchAction: "none", cursor: brush ? "crosshair" : "default" }}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUpCancel}
+            onPointerCancel={onPointerUpCancel}
+          />
+          {/* Brush rectangle */}
+          {brush && (
+            <rect
+              x={Math.min(brush.x0, brush.x1)}
+              y={Math.min(brush.y0, brush.y1)}
+              width={Math.abs(brush.x1 - brush.x0)}
+              height={Math.abs(brush.y1 - brush.y0)}
+              fill="rgba(191,87,0,0.12)"
+              stroke={burntOrange}
+              strokeDasharray="4,3"
+            />
+          )}
         </g>
       </svg>
     </div>
