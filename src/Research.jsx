@@ -716,22 +716,32 @@ export default function Research() {
             <line x1={regSegment.x0} y1={regSegment.y0} x2={regSegment.x1} y2={regSegment.y1} stroke="#333" strokeWidth="2" opacity="0.7" />
           )}
 
-          {/* Names as markers (burnt orange) */}
-          {points.map((d, i) => (
-            <text
-              key={`name-${i}`}
-              x={xScale(d.x)}
-              y={yScale(d.y)}
-              textAnchor="middle"
-              dominantBaseline="central"
-              fontSize={12}
-              fontWeight={700}
-              fill={burntOrange}
-              style={{ pointerEvents: "none" }}
-            >
-              {d.name ?? ""}
-            </text>
-          ))}
+          {/* Names as markers (burnt orange, adaptive anchors) */}
+          {points.map((d, i) => {
+            const px = xScale(d.x);
+            const py = yScale(d.y);
+
+            // Adjust label anchoring to avoid clipping at edges
+            let anchor = "middle";
+            if (px > WIDTH - 40) anchor = "end";                // near right edge -> draw leftward
+            else if (px < M.left + 40) anchor = "start";        // near left edge  -> draw rightward
+
+            return (
+              <text
+                key={`name-${i}`}
+                x={px}
+                y={py}
+                textAnchor={anchor}
+                dominantBaseline="central"
+                fontSize={12}
+                fontWeight={700}
+                fill={burntOrange}
+                style={{ pointerEvents: "none" }}
+              >
+                {d.name ?? ""}
+              </text>
+            );
+          })}
 
           {/* Drag box */}
           {dragging && box && (
@@ -781,7 +791,7 @@ export default function Research() {
             ))}
         </select>
 
-        {/* legend (kept as-is; sorts not required) */}
+        {/* legend */}
         <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", maxWidth: 480 }}>
           {selectedSeries.map((k) => (
             <div key={`lg-${k}`} style={{ display: "flex", alignItems: "center", gap: 6 }}>
