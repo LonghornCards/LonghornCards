@@ -1,5 +1,6 @@
 // src/Research.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import * as XLSX from "xlsx";
 
 /**
@@ -71,9 +72,8 @@ export default function Research() {
   const excelSerialToDate = (d) => {
     if (typeof d !== "number" || !isFinite(d)) return null;
     const utcDays = Math.floor(d - 25569); // 25569 = days from 1899-12-30 to 1970-01-01
-    const utcValue = utcDays * 86400; // seconds
-    const dateInfo = new Date(utcValue * 1000);
-    // Add the fractional day portion
+    theUtcSeconds = utcDays * 86400; // seconds
+    const dateInfo = new Date(theUtcSeconds * 1000);
     const fractionalDay = d - Math.floor(d);
     if (fractionalDay > 0) {
       const ms = Math.round(fractionalDay * 24 * 60 * 60 * 1000);
@@ -86,7 +86,6 @@ export default function Research() {
     if (v == null || v === "") return null;
     if (v instanceof Date && !isNaN(v)) return v;
     if (typeof v === "number") return excelSerialToDate(v);
-    // Strings
     const d = new Date(v);
     return isNaN(d) ? null : d;
   };
@@ -215,8 +214,7 @@ export default function Research() {
         })();
 
         // series = numeric columns except time
-        const isNumCol = (c) =>
-          json.some((r) => r[c] !== null && r[c] !== "" && !isNaN(Number(r[c])));
+        const isNumCol = (c) => json.some((r) => r[c] !== null && r[c] !== "" && !isNaN(Number(r[c])));
         let sKeys = cols.filter((c) => c !== timeGuess && isNumCol(c));
 
         setTrendsRows(json);
@@ -426,7 +424,6 @@ export default function Research() {
   // ===== Trends chart computed data =====
   const trendsPointsBySeries = useMemo(() => {
     if (!trendsRows.length || !timeKey || !seriesKeys.length) return {};
-    // Map each selected series to array of {t: Date, y: number}
     const result = {};
     for (const s of seriesKeys) {
       result[s] = trendsRows
@@ -467,17 +464,12 @@ export default function Research() {
     const span = t1 - t0 || 1;
     return TM.left + ((d - t0) / span) * TinnerW;
   };
-  const tyScale = (v) => {
-    // 0..100 fixed
-    return TM.top + TinnerH - ((v - 0) / (100 - 0)) * TinnerH;
-  };
+  const tyScale = (v) => TM.top + TinnerH - ((v - 0) / (100 - 0)) * TinnerH; // 0..100 fixed
 
   const buildPath = (pts) => {
     if (!pts || !pts.length) return "";
     let d = `M ${tScale(pts[0].t)} ${tyScale(pts[0].y)}`;
-    for (let i = 1; i < pts.length; i++) {
-      d += ` L ${tScale(pts[i].t)} ${tyScale(pts[i].y)}`;
-    }
+    for (let i = 1; i < pts.length; i++) d += ` L ${tScale(pts[i].t)} ${tyScale(pts[i].y)}`;
     return d;
   };
 
@@ -486,9 +478,7 @@ export default function Research() {
     const count = 6;
     const out = [];
     const span = t1 - t0 || 1;
-    for (let i = 0; i <= count; i++) {
-      out.push(new Date(t0.getTime() + (i / count) * span));
-    }
+    for (let i = 0; i <= count; i++) out.push(new Date(t0.getTime() + (i / count) * span));
     return out;
   }, [trendsXDomain]);
 
@@ -519,6 +509,25 @@ export default function Research() {
   // ===== UI =====
   return (
     <div style={{ fontFamily: "Arial, sans-serif", padding: 20 }}>
+      {/* Back to Home button */}
+      <div style={{ marginBottom: 12 }}>
+        <Link
+          to="/"
+          style={{
+            display: "inline-block",
+            padding: "6px 14px",
+            borderRadius: 8,
+            border: `2px solid ${burntOrange}`,
+            background: "#fff",
+            color: burntOrange,
+            fontWeight: 700,
+            textDecoration: "none",
+          }}
+        >
+          ⬅ Back to Home
+        </Link>
+      </div>
+
       {/* Logo */}
       <div style={{ textAlign: "center" }}>
         <img src={logoUrl} alt="Logo" style={{ width: 120, marginBottom: 12 }} />
@@ -723,8 +732,8 @@ export default function Research() {
 
             // Adjust label anchoring to avoid clipping at edges
             let anchor = "middle";
-            if (px > WIDTH - 40) anchor = "end";                // near right edge -> draw leftward
-            else if (px < M.left + 40) anchor = "start";        // near left edge  -> draw rightward
+            if (px > WIDTH - 40) anchor = "end";         // near right edge -> draw leftward
+            else if (px < M.left + 40) anchor = "start"; // near left edge  -> draw rightward
 
             return (
               <text
@@ -862,7 +871,8 @@ export default function Research() {
       {/* Disclosure text (kept beneath both charts) */}
       <div style={{ textAlign: "center", marginTop: 10 }}>
         <span style={{ color: burntOrange, fontSize: 12 }}>
-          Source:  Sports-Reference.com, Google, and Card Ladder with data transformed by Longhorn Cards and Collectibles
+          Source:  Sports-Reference.com, Google, and Card Ladder with data transformed by Longhorn Cards and Collectibles.
+          Composite Rank includes Technical Rank (card prices), Sentiment Rank (Google Trends), and Fundamental Rank (player statistics).
         </span>
       </div>
 
