@@ -526,22 +526,7 @@ export default function Research() {
         <UnifiedScatter data={unifiedData} burntOrange={burntOrange} />
 
         <div style={{ fontSize: 12, color: "#666", marginTop: 6, whiteSpace: "pre-wrap" }}>
-{`Gestures:
-• Touch: pinch with two fingers to zoom; drag while pinching to focus on an area.
-• Mouse: scroll wheel to zoom at cursor; click-drag to draw a box and zoom to it.
-• Double-click or use "Reset Zoom" to go back.
-
-Variables available:
-- Technical Rank (0–100; higher = better)
-- Google Trends Rank (latest, 1–100; higher = better)
-- Composite Rank (Tech & Google avg) — 2-source
-- Composite Rank (2/3 of prior + 1/3 Fundamental) — 3-source
-- Fundamental Rank (0–100; higher = better)
-- Fundamental Change (Δ; can be negative/positive)
-- 3-Month RS (raw)
-- 12-Month RS (raw)
-- 3-Month RS Rank (0–100; higher = better)
-- 12-Month RS Rank (0–100; higher = better)
+{`Sources:  Sports-Reference.com, Google Trends, Card Ladder; Data is transformed by Longhorn Cards to scores and rankings.
 `}
         </div>
       </div>
@@ -566,7 +551,7 @@ Variables available:
         }}
       >
         {
-          "Source:  Underlying data sourced from Google Trends.  Calculations by Longhorn Cards transform the data into sentiment rankings."
+          "Source:  Underlying data for line charts and box plots sourced from Google Trends.  Calculations by Longhorn Cards transform the data into sentiment rankings."
         }
       </div>
 
