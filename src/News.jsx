@@ -3,12 +3,11 @@ import React, { useEffect, useMemo, useRef, useState, useCallback } from "react"
 import { Link } from "react-router-dom";
 
 /**
- * Sources
+ * Sources (all enabled by default)
  * - Yahoo Sports (RSS)
  * - ESPN (RSS)
  * - CBS Sports (RSS)
- * - Sports Illustrated (RSS)
- * - Bleacher Report (RSS)
+ * - ABC Sports (RSS)
  * - CLLCT – Memorabilia (HTML)
  * - CLLCT – Sports Cards (HTML)
  *
@@ -20,14 +19,13 @@ const FEEDS = [
   { id: "yahoo", name: "Yahoo Sports", url: "https://sports.yahoo.com/rss/", kind: "rss" },
   { id: "espn", name: "ESPN", url: "https://www.espn.com/espn/rss/news", kind: "rss" },
   { id: "cbs", name: "CBS Sports", url: "https://www.cbssports.com/rss/headlines/", kind: "rss" },
-  { id: "si", name: "Sports Illustrated", url: "https://www.si.com/rss/si_topstories.rss", kind: "rss" },
-  { id: "br", name: "Bleacher Report", url: "https://bleacherreport.com/articles/feed", kind: "rss" },
+  { id: "abc", name: "ABC Sports", url: "https://abcnews.go.com/abcnews/sportsheadlines", kind: "rss" },
   { id: "cllct-mem", name: "CLLCT (Memorabilia)", url: "https://www.cllct.com/sports-collectibles/memorabilia", kind: "html" },
   { id: "cllct-cards", name: "CLLCT (Sports Cards)", url: "https://www.cllct.com/sports-collectibles/sports-cards", kind: "html" },
 ];
 
 const CLLCT_IDS = ["cllct-mem", "cllct-cards"];
-const MAJOR_IDS = ["yahoo", "espn", "cbs", "si", "br"];
+const MAJOR_IDS = ["yahoo", "espn", "cbs", "abc"];
 const MAX_ITEMS_PER_FEED = 30;
 
 // --- Styles
@@ -96,23 +94,7 @@ async function fetchViaAllOrigins(url) {
   return data.contents;
 }
 
-// --- RSS parsing (Yahoo/ESPN/CBS/SI/BR)
-function extractImageFromItem(item) {
-  const media =
-    item.getElementsByTagName("media:content")[0] ||
-    item.getElementsByTagName("media:thumbnail")[0] ||
-    item.getElementsByTagName("media")[0];
-  if (media && media.getAttribute("url")) return media.getAttribute("url");
-
-  const enclosure = item.getElementsByTagName("enclosure")[0];
-  if (enclosure && enclosure.getAttribute("url")) return enclosure.getAttribute("url");
-
-  const desc = item.getElementsByTagName("description")[0]?.textContent || "";
-  const match = desc.match(/<img[^>]+src=["']([^"']+)["']/i);
-  if (match?.[1]) return match[1];
-
-  return null;
-}
+// --- RSS parsing
 function parseRss(xmlText, sourceId, sourceName) {
   const parser = new DOMParser();
   const xml = parser.parseFromString(xmlText, "text/xml");
@@ -134,7 +116,6 @@ function parseRss(xmlText, sourceId, sourceName) {
       item.getElementsByTagName("description")[0]?.textContent?.trim() ||
       item.getElementsByTagName("summary")[0]?.textContent?.trim() ||
       "";
-    const img = extractImageFromItem(item);
 
     return {
       id: `${sourceId}:${link || title}:${pubDate}`,
@@ -143,7 +124,6 @@ function parseRss(xmlText, sourceId, sourceName) {
       title: decodeHTMLEntities(title),
       url: sanitizeLink(link),
       description: stripTags(description),
-      image: img,
       date: pubDate ? new Date(pubDate) : null,
     };
   });
@@ -188,13 +168,6 @@ function parseCllctCategoryHtml(htmlText, { url, sourceId, sourceName }) {
       node.querySelector("h2,h3,h4")?.textContent?.trim() ||
       "";
 
-    let img =
-      node.querySelector("img")?.getAttribute("src") ||
-      node.querySelector("img")?.getAttribute("data-src") ||
-      node.querySelector("source")?.getAttribute("srcset")?.split(" ")?.[0] ||
-      null;
-    if (img) img = absUrl(base, img);
-
     const timeEl = node.querySelector("time");
     const datetime = timeEl?.getAttribute("datetime") || timeEl?.textContent?.trim() || "";
     const date = datetime ? new Date(datetime) : null;
@@ -213,7 +186,6 @@ function parseCllctCategoryHtml(htmlText, { url, sourceId, sourceName }) {
       title,
       url: link,
       description: desc,
-      image: img,
       date,
     });
   }
@@ -230,10 +202,10 @@ export default function News() {
   const [articles, setArticles] = useState([]);
   const [error, setError] = useState("");
 
-  // Source selection + toggles
+  // ✅ all feeds selected by default
   const [activeSources, setActiveSources] = useState(FEEDS.map((f) => f.id));
 
-  // Mutually exclusive quick filters
+  // Quick filters
   const [cllctOnly, setCllctOnly] = useState(false);
   const [majorsOnly, setMajorsOnly] = useState(false);
 
@@ -263,7 +235,6 @@ export default function News() {
       const restored = prevSourcesRef.current?.length ? prevSourcesRef.current : FEEDS.map((f) => f.id);
       setActiveSources(restored);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cllctOnly, majorsOnly]);
 
   const load = useCallback(async () => {
@@ -339,7 +310,6 @@ export default function News() {
             flexWrap: "wrap",
           }}
         >
-          {/* Home button */}
           <Link
             to="/"
             style={{
@@ -367,7 +337,7 @@ export default function News() {
                 if (v) setCllctOnly(false);
               }}
               label="Major outlets only"
-              title="Show only Yahoo, ESPN, CBS, SI, Bleacher Report"
+              title="Show only Yahoo, ESPN, CBS, ABC"
             />
             <Toggle
               checked={cllctOnly}
@@ -458,7 +428,7 @@ export default function News() {
         ) : filtered.length === 0 ? (
           <div style={{ padding: 32, color: COLORS.subtext }}>No articles match your filters.</div>
         ) : (
-          <ArticleGrid articles={filtered} />
+          <ArticleList articles={filtered} />
         )}
       </main>
     </div>
@@ -489,7 +459,7 @@ function SourcePicker({ feeds, active, onToggle, onAll, onNone }) {
             style={{
               padding: "6px 10px",
               borderRadius: 10,
-              border: `1px solid ${selected ? COLORS.brand : COLORS.border}`, // ✅ fixed
+              border: `1px solid ${selected ? COLORS.brand : COLORS.border}`,
               background: selected ? COLORS.brand : "#FFFFFF",
               color: selected ? "#FFFFFF" : COLORS.text,
               fontWeight: 600,
@@ -574,15 +544,9 @@ function Toggle({ checked, onChange, label, title }) {
   );
 }
 
-function ArticleGrid({ articles }) {
+function ArticleList({ articles }) {
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-        gap: 16,
-      }}
-    >
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {articles.map((a) => (
         <ArticleCard key={a.id} a={a} />
       ))}
@@ -591,7 +555,6 @@ function ArticleGrid({ articles }) {
 }
 
 function ArticleCard({ a }) {
-  const host = safeHostFromUrl(a.url);
   return (
     <a
       href={a.url}
@@ -601,66 +564,27 @@ function ArticleCard({ a }) {
         display: "block",
         background: COLORS.card,
         border: `1px solid ${COLORS.border}`,
-        borderRadius: 14,
-        overflow: "hidden",
+        borderRadius: 10,
+        padding: 12,
         textDecoration: "none",
         color: "inherit",
-        transition: "transform 120ms ease, box-shadow 120ms ease",
-        boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+        transition: "background 120ms ease",
       }}
-      onMouseEnter={(e) => (e.currentTarget.style.transform = "translateY(-2px)")}
-      onMouseLeave={(e) => (e.currentTarget.style.transform = "translateY(0)")}
     >
-      {a.image ? (
-        <div
-          style={{
-            width: "100%",
-            aspectRatio: "16/9",
-            backgroundImage: `url(${a.image})`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-          }}
-        />
-      ) : (
-        <div
-          style={{
-            width: "100%",
-            aspectRatio: "16/9",
-            background: "#F3F4F6",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: COLORS.subtext,
-            fontSize: 12,
-          }}
-        >
-          No image
-        </div>
-      )}
-      <div style={{ padding: 12 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-          <img
-            src={`https://www.google.com/s2/favicons?domain=${host}&sz=64`}
-            alt=""
-            width={16}
-            height={16}
-            style={{ borderRadius: 4, opacity: 0.9 }}
-            loading="lazy"
-          />
-          <span style={{ fontSize: 12, color: COLORS.subtext }} title={a.sourceName}>
-            {a.sourceName}
-          </span>
-          <span style={{ marginLeft: "auto", fontSize: 12, color: COLORS.subtext }}>
-            {a.date ? timeAgo(a.date) : ""}
-          </span>
-        </div>
-        <h3 style={{ fontSize: 16, lineHeight: 1.3, margin: "4px 0 6px", color: COLORS.text }}>{a.title}</h3>
-        {a.description && (
-          <p style={{ fontSize: 13, color: COLORS.subtext, margin: 0 }}>
-            {a.description.length > 160 ? a.description.slice(0, 160) + "…" : a.description}
-          </p>
-        )}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+        <span style={{ fontSize: 12, color: COLORS.subtext }} title={a.sourceName}>
+          {a.sourceName}
+        </span>
+        <span style={{ marginLeft: "auto", fontSize: 12, color: COLORS.subtext }}>
+          {a.date ? timeAgo(a.date) : ""}
+        </span>
       </div>
+      <h3 style={{ fontSize: 16, lineHeight: 1.3, margin: 0, color: COLORS.text }}>{a.title}</h3>
+      {a.description && (
+        <p style={{ fontSize: 13, color: COLORS.subtext, margin: "4px 0 0" }}>
+          {a.description.length > 160 ? a.description.slice(0, 160) + "…" : a.description}
+        </p>
+      )}
     </a>
   );
 }
