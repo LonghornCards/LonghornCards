@@ -70,13 +70,6 @@ function sanitizeLink(link) {
   const m = trimmed.match(/href=["']([^"']+)["']/i);
   return m ? m[1] : trimmed;
 }
-function safeHostFromUrl(url) {
-  try {
-    return new URL(url).host;
-  } catch {
-    return "news";
-  }
-}
 function absUrl(base, maybeRelative) {
   try {
     return new URL(maybeRelative, base).toString();
@@ -88,7 +81,7 @@ function absUrl(base, maybeRelative) {
 // --- Fetch helpers
 async function fetchViaAllOrigins(url) {
   const proxied = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
-  const res = await fetch(proxied);
+  const res = await fetch(proxied, { cache: "no-store" });
   if (!res.ok) throw new Error(`Failed fetching: ${url}`);
   const data = await res.json();
   return data.contents;
@@ -157,24 +150,24 @@ function parseCllctCategoryHtml(htmlText, { url, sourceId, sourceName }) {
 
   const items = [];
   for (const node of Array.from(candidates)) {
-    let a = node.querySelector("a[href*='/sports-collectibles/']") || node.querySelector("a[href^='/']");
+    let a = node?.querySelector?.("a[href*='/sports-collectibles/']") || node?.querySelector?.("a[href^='/']");
     const href = a?.getAttribute?.("href");
     if (!href) continue;
     const link = absUrl(base, href);
 
     let title =
-      a?.getAttribute("title") ||
+      a?.getAttribute?.("title") ||
       a?.textContent?.trim() ||
-      node.querySelector("h2,h3,h4")?.textContent?.trim() ||
+      node?.querySelector?.("h2,h3,h4")?.textContent?.trim() ||
       "";
 
-    const timeEl = node.querySelector("time");
-    const datetime = timeEl?.getAttribute("datetime") || timeEl?.textContent?.trim() || "";
+    const timeEl = node?.querySelector?.("time");
+    const datetime = timeEl?.getAttribute?.("datetime") || timeEl?.textContent?.trim() || "";
     const date = datetime ? new Date(datetime) : null;
 
     const desc =
-      node.querySelector("p")?.textContent?.trim() ||
-      node.querySelector("[class*='dek'],[class*='summary'],[data-field='description']")?.textContent?.trim() ||
+      node?.querySelector?.("p")?.textContent?.trim() ||
+      node?.querySelector?.("[class*='dek'],[class*='summary'],[data-field='description']")?.textContent?.trim() ||
       "";
 
     if (!title || !link) continue;
@@ -235,8 +228,10 @@ export default function News() {
       const restored = prevSourcesRef.current?.length ? prevSourcesRef.current : FEEDS.map((f) => f.id);
       setActiveSources(restored);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cllctOnly, majorsOnly]);
 
+  // Main loader (memoized)
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -273,9 +268,10 @@ export default function News() {
     }
   }, [activeSources]);
 
+  // ✅ Load immediately on mount AND whenever the active sources change
   useEffect(() => {
     load();
-  }, [load]);
+  }, [activeSources]); // ensures first render fetch + updates on source changes
 
   const filtered = useMemo(() => {
     if (!query.trim()) return articles;
@@ -353,9 +349,7 @@ export default function News() {
               feeds={FEEDS}
               active={activeSources}
               onToggle={(id) => {
-                setActiveSources((prev) =>
-                  prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-                );
+                setActiveSources((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
                 // manual change exits quick filters
                 setCllctOnly(false);
                 setMajorsOnly(false);
