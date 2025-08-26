@@ -989,7 +989,8 @@ export default function Research() {
         <span style={{ color: burntOrange, fontSize: "clamp(10px, 2.6vw, 12px)" }}>
           Source: Sports-Reference.com, Google, and Card Ladder with data transformed by Longhorn Cards and
           Collectibles. Composite Rank includes Technical Rank (card prices), Sentiment Rank (Google Trends), and
-          Fundamental Rank (player statistics).
+          Fundamental Rank (player statistics).  Fundamental Change reflects the impact of the most recent season
+          on the career average.
         </span>
       </div>
 
