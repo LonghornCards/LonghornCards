@@ -29,6 +29,60 @@ try {
   trendsUrl = "/src-assets/Google_Trends_Ranks.xlsx"; // public/src-assets
 }
 
+/** Measure a container’s width (works on resize) */
+function useContainerWidth(minWidth = 320) {
+  const ref = useRef(null);
+  const [w, setW] = useState(minWidth);
+  useEffect(() => {
+    const ro = new ResizeObserver(() => {
+      if (ref.current) setW(ref.current.clientWidth);
+    });
+    if (ref.current) {
+      setW(ref.current.clientWidth);
+      ro.observe(ref.current);
+    }
+    return () => ro.disconnect();
+  }, []);
+  return [ref, Math.max(minWidth, w)];
+}
+
+/** Clamp helper */
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+/** Number formatter */
+const formatNum = (n) =>
+  n == null || isNaN(n)
+    ? ""
+    : Math.abs(n) >= 1000
+    ? n.toFixed(0)
+    : Math.abs(n) >= 100
+    ? n.toFixed(1)
+    : Math.abs(n) >= 10
+    ? n.toFixed(1)
+    : n.toFixed(2);
+
+/** Excel serial date -> JS Date */
+const excelSerialToDate = (d) => {
+  if (typeof d !== "number" || !isFinite(d)) return null;
+  const utcDays = Math.floor(d - 25569); // 25569 = days from 1899-12-30 to 1970-01-01
+  const theUtcSeconds = utcDays * 86400; // seconds
+  const dateInfo = new Date(theUtcSeconds * 1000);
+  const fractionalDay = d - Math.floor(d);
+  if (fractionalDay > 0) {
+    const ms = Math.round(fractionalDay * 24 * 60 * 60 * 1000);
+    dateInfo.setTime(dateInfo.getTime() + ms);
+  }
+  return dateInfo;
+};
+
+const tryParseDate = (v) => {
+  if (v == null || v === "") return null;
+  if (v instanceof Date && !isNaN(v)) return v;
+  if (typeof v === "number") return excelSerialToDate(v);
+  const d = new Date(v);
+  return isNaN(d) ? null : d;
+};
+
 export default function Research() {
   const burntOrange = "#BF5700";
 
@@ -45,10 +99,13 @@ export default function Research() {
   const [xDomain, setXDomain] = useState(null);
   const [yDomain, setYDomain] = useState(null);
 
-  // Box-zoom state
+  // Box-zoom state (pointer-based = works on mouse + touch)
   const [dragging, setDragging] = useState(false);
   const [box, setBox] = useState(null); // {x0,y0,x1,y1}
   const plotRef = useRef(null);
+
+  // Tooltip for scatter (works on tap)
+  const [tip, setTip] = useState(null); // {x,y,content}
 
   // -------- Trends line chart state --------
   const [trendsRows, setTrendsRows] = useState([]);
@@ -56,41 +113,7 @@ export default function Research() {
   const [seriesKeys, setSeriesKeys] = useState([]); // numeric series columns
   const [selectedSeries, setSelectedSeries] = useState([]); // multiple selection
 
-  // ===== Helpers =====
-  const formatNum = (n) =>
-    n == null || isNaN(n)
-      ? ""
-      : Math.abs(n) >= 1000
-      ? n.toFixed(0)
-      : Math.abs(n) >= 100
-      ? n.toFixed(1)
-      : Math.abs(n) >= 10
-      ? n.toFixed(1)
-      : n.toFixed(2);
-
-  // Excel serial date (days since 1899-12-30) -> JS Date
-  const excelSerialToDate = (d) => {
-    if (typeof d !== "number" || !isFinite(d)) return null;
-    const utcDays = Math.floor(d - 25569); // 25569 = days from 1899-12-30 to 1970-01-01
-    theUtcSeconds = utcDays * 86400; // seconds
-    const dateInfo = new Date(theUtcSeconds * 1000);
-    const fractionalDay = d - Math.floor(d);
-    if (fractionalDay > 0) {
-      const ms = Math.round(fractionalDay * 24 * 60 * 60 * 1000);
-      dateInfo.setTime(dateInfo.getTime() + ms);
-    }
-    return dateInfo;
-  };
-
-  const tryParseDate = (v) => {
-    if (v == null || v === "") return null;
-    if (v instanceof Date && !isNaN(v)) return v;
-    if (typeof v === "number") return excelSerialToDate(v);
-    const d = new Date(v);
-    return isNaN(d) ? null : d;
-  };
-
-  // ===== Load Composite (scatter) XLSX =====
+  // ---------- DATA LOAD: Composite (scatter) ----------
   useEffect(() => {
     (async () => {
       try {
@@ -169,7 +192,7 @@ export default function Research() {
     })();
   }, []);
 
-  // ===== Load Google Trends XLSX =====
+  // ---------- DATA LOAD: Google Trends ----------
   useEffect(() => {
     (async () => {
       try {
@@ -261,12 +284,14 @@ export default function Research() {
       .filter(Boolean);
   }, [filtered, xKey, yKey, nameKey]);
 
-  // Chart geometry & scales (scatter)
-  const WIDTH = 900,
-    HEIGHT = 560;
-  const M = { top: 28, right: 20, bottom: 56, left: 64 };
-  const innerW = WIDTH - M.left - M.right;
-  const innerH = HEIGHT - M.top - M.bottom;
+  // ======= Responsive layout =======
+  // Scatter container width / height (aspect adjusts on mobile)
+  const [scatterRef, scatterW] = useContainerWidth(320);
+  const S_WIDTH = scatterW; // full width of container
+  const S_HEIGHT = Math.round(clamp(scatterW * 0.62, 260, 560)); // maintain ~16:10 but cap
+  const SM = { top: 28, right: 16, bottom: 48, left: 56 };
+  const S_innerW = S_WIDTH - SM.left - SM.right;
+  const S_innerH = S_HEIGHT - SM.top - SM.bottom;
 
   // Auto extents (un-padded; we'll pad only for autoscaling cases)
   const autoX = useMemo(() => {
@@ -288,7 +313,6 @@ export default function Research() {
     const span = max - min;
     return [min - span * 0.05, max + span * 0.05];
   }
-  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
   // Axis policy: 0–100 for all fields EXCEPT "Fundamental Change" (autoscale). Allow zoom within policy.
   const getExtent = (axisKey, domain, auto) => {
@@ -307,15 +331,14 @@ export default function Research() {
   const xExtent = getExtent(xKey, xDomain, autoX);
   const yExtent = getExtent(yKey, yDomain, autoY);
 
-  const xScale = (v) => M.left + ((v - xExtent[0]) / (xExtent[1] - xExtent[0])) * innerW;
-  const yScale = (v) => M.top + innerH - ((v - yExtent[0]) / (yExtent[1] - yExtent[0])) * innerH;
+  const xScale = (v) => SM.left + ((v - xExtent[0]) / (xExtent[1] - xExtent[0])) * S_innerW;
+  const yScale = (v) => SM.top + S_innerH - ((v - yExtent[0]) / (yExtent[1] - yExtent[0])) * S_innerH;
 
-  const invX = (px) => ((px - M.left) / innerW) * (xExtent[1] - xExtent[0]) + xExtent[0];
-  const invY = (py) => (1 - (py - M.top) / innerH) * (yExtent[1] - yExtent[0]) + yExtent[0];
+  const invX = (px) => ((px - SM.left) / S_innerW) * (xExtent[1] - xExtent[0]) + xExtent[0];
+  const invY = (py) => (1 - (py - SM.top) / S_innerH) * (yExtent[1] - yExtent[0]) + yExtent[0];
 
   const ticks = (min, max, count = 5) => {
-    const arr = [],
-      step = (max - min) / count;
+    const arr = [], step = (max - min) / count;
     for (let i = 0; i <= count; i++) arr.push(min + i * step);
     return arr;
   };
@@ -330,18 +353,11 @@ export default function Research() {
   const reg = useMemo(() => {
     if (points.length < 2) return null;
     const n = points.length;
-    let sx = 0,
-      sy = 0,
-      sxx = 0,
-      sxy = 0;
+    let sx = 0, sy = 0, sxx = 0, sxy = 0;
     for (const p of points) {
-      sx += p.x;
-      sy += p.y;
-      sxx += p.x * p.x;
-      sxy += p.x * p.y;
+      sx += p.x; sy += p.y; sxx += p.x * p.x; sxy += p.x * p.y;
     }
-    const xbar = sx / n,
-      ybar = sy / n;
+    const xbar = sx / n, ybar = sy / n;
     const denom = sxx - n * xbar * xbar;
     const m = denom === 0 ? 0 : (sxy - n * xbar * ybar) / denom;
     const b = ybar - m * xbar;
@@ -351,10 +367,7 @@ export default function Research() {
   const regSegment = useMemo(() => {
     if (!reg) return null;
     const { m, b } = reg;
-    const xmin = xExtent[0],
-      xmax = xExtent[1],
-      ymin = yExtent[0],
-      ymax = yExtent[1];
+    const xmin = xExtent[0], xmax = xExtent[1], ymin = yExtent[0], ymax = yExtent[1];
     const candidates = [];
     const y1 = m * xmin + b;
     if (y1 >= ymin && y1 <= ymax) candidates.push({ x: xmin, y: y1 });
@@ -368,48 +381,43 @@ export default function Research() {
     }
     if (candidates.length < 2) return null;
     candidates.sort((a, bp) => a.x - bp.x);
-    const p0 = candidates[0],
-      p1 = candidates[candidates.length - 1];
+    const p0 = candidates[0], p1 = candidates[candidates.length - 1];
     return { x0: xScale(p0.x), y0: yScale(p0.y), x1: xScale(p1.x), y1: yScale(p1.y) };
   }, [reg, xExtent, yExtent]);
 
-  // Box Zoom handlers (scatter)
+  // Pointer handlers for box zoom (mouse + touch)
   const clampToPlot = (x, y) => {
-    const cx = Math.max(M.left, Math.min(M.left + innerW, x));
-    const cy = Math.max(M.top, Math.min(M.top + innerH, y));
+    const cx = Math.max(SM.left, Math.min(SM.left + S_innerW, x));
+    const cy = Math.max(SM.top, Math.min(SM.top + S_innerH, y));
     return [cx, cy];
   };
-  const onPlotMouseDown = (e) => {
+  const onPlotPointerDown = (e) => {
     if (!plotRef.current) return;
+    plotRef.current.setPointerCapture?.(e.pointerId);
     const rect = plotRef.current.getBoundingClientRect();
     const [cx, cy] = clampToPlot(e.clientX - rect.left, e.clientY - rect.top);
     setDragging(true);
     setBox({ x0: cx, y0: cy, x1: cx, y1: cy });
   };
-  const onPlotMouseMove = (e) => {
+  const onPlotPointerMove = (e) => {
     if (!dragging || !plotRef.current) return;
     const rect = plotRef.current.getBoundingClientRect();
     const [cx, cy] = clampToPlot(e.clientX - rect.left, e.clientY - rect.top);
     setBox((b) => (b ? { ...b, x1: cx, y1: cy } : b));
   };
-  const onPlotMouseUp = () => {
+  const onPlotPointerUp = () => {
     if (!dragging || !box) {
       setDragging(false);
       setBox(null);
       return;
     }
     const { x0, y0, x1, y1 } = box;
-    const w = Math.abs(x1 - x0),
-      h = Math.abs(y1 - y0);
+    const w = Math.abs(x1 - x0), h = Math.abs(y1 - y0);
     if (w >= 6 && h >= 6) {
-      const left = Math.min(x0, x1),
-        right = Math.max(x0, x1);
-      const top = Math.min(y0, y1),
-        bottom = Math.max(y0, y1);
-      const nx0 = invX(left),
-        nx1 = invX(right);
-      const ny0 = invY(bottom),
-        ny1 = invY(top);
+      const left = Math.min(x0, x1), right = Math.max(x0, x1);
+      const top = Math.min(y0, y1), bottom = Math.max(y0, y1);
+      const nx0 = invX(left), nx1 = invX(right);
+      const ny0 = invY(bottom), ny1 = invY(top);
       if (isFinite(nx0) && isFinite(nx1) && nx1 > nx0) setXDomain([nx0, nx1]);
       if (isFinite(ny0) && isFinite(ny1) && ny1 > ny0) setYDomain([ny0, ny1]);
     }
@@ -421,7 +429,7 @@ export default function Research() {
     setYDomain(null);
   };
 
-  // ===== Trends chart computed data =====
+  // ===== Trends chart computed data (responsive) =====
   const trendsPointsBySeries = useMemo(() => {
     if (!trendsRows.length || !timeKey || !seriesKeys.length) return {};
     const result = {};
@@ -452,19 +460,20 @@ export default function Research() {
     return [trendsAllPoints[0].t, trendsAllPoints[trendsAllPoints.length - 1].t];
   }, [trendsAllPoints]);
 
-  // Trends chart geometry
-  const TW = 900,
-    TH = 320;
-  const TM = { top: 24, right: 20, bottom: 48, left: 64 };
-  const TinnerW = TW - TM.left - TM.right;
-  const TinnerH = TH - TM.top - TM.bottom;
+  // Trends container width / height
+  const [trendsRef, trendsW] = useContainerWidth(320);
+  const T_WIDTH = trendsW;
+  const T_HEIGHT = Math.round(clamp(trendsW * 0.5, 220, 380));
+  const TM = { top: 24, right: 16, bottom: 48, left: 56 };
+  const T_innerW = T_WIDTH - TM.left - TM.right;
+  const T_innerH = T_HEIGHT - TM.top - TM.bottom;
 
   const tScale = (d) => {
     const [t0, t1] = trendsXDomain;
     const span = t1 - t0 || 1;
-    return TM.left + ((d - t0) / span) * TinnerW;
+    return TM.left + ((d - t0) / span) * T_innerW;
   };
-  const tyScale = (v) => TM.top + TinnerH - ((v - 0) / (100 - 0)) * TinnerH; // 0..100 fixed
+  const tyScale = (v) => TM.top + T_innerH - ((v - 0) / (100 - 0)) * T_innerH; // 0..100 fixed
 
   const buildPath = (pts) => {
     if (!pts || !pts.length) return "";
@@ -475,7 +484,7 @@ export default function Research() {
 
   const timeTicks = useMemo(() => {
     const [t0, t1] = trendsXDomain;
-    const count = 6;
+    const count = 5; // fewer ticks on mobile
     const out = [];
     const span = t1 - t0 || 1;
     for (let i = 0; i <= count; i++) out.push(new Date(t0.getTime() + (i / count) * span));
@@ -490,32 +499,27 @@ export default function Research() {
 
   // Simple categorical color palette
   const palette = [
-    "#0d6efd",
-    "#198754",
-    "#dc3545",
-    "#fd7e14",
-    "#6f42c1",
-    "#20c997",
-    "#0dcaf0",
-    "#6610f2",
-    "#6c757d",
-    "#ffc107",
+    "#0d6efd", "#198754", "#dc3545", "#fd7e14", "#6f42c1",
+    "#20c997", "#0dcaf0", "#6610f2", "#6c757d", "#ffc107",
   ];
   const colorFor = (key) => {
     const i = seriesKeys.indexOf(key);
     return palette[i % palette.length] || "#333";
   };
 
+  // Mobile aids: hide labels if narrow; use dots with tooltip instead
+  const smallScreen = S_WIDTH < 520;
+
   // ===== UI =====
   return (
-    <div style={{ fontFamily: "Arial, sans-serif", padding: 20 }}>
+    <div style={{ fontFamily: "Arial, sans-serif", padding: 16, maxWidth: 1200, margin: "0 auto" }}>
       {/* Back to Home button */}
       <div style={{ marginBottom: 12 }}>
         <Link
           to="/"
           style={{
             display: "inline-block",
-            padding: "6px 14px",
+            padding: "8px 14px",
             borderRadius: 8,
             border: `2px solid ${burntOrange}`,
             background: "#fff",
@@ -530,27 +534,36 @@ export default function Research() {
 
       {/* Logo */}
       <div style={{ textAlign: "center" }}>
-        <img src={logoUrl} alt="Logo" style={{ width: 120, marginBottom: 12 }} />
+        <img src={logoUrl} alt="Logo" style={{ width: 96, maxWidth: "28vw", marginBottom: 10 }} />
       </div>
 
       {/* Title */}
-      <h1 style={{ color: burntOrange, fontSize: "2.5rem", margin: "0 0 8px", textAlign: "center" }}>
+      <h1
+        style={{
+          color: burntOrange,
+          textAlign: "center",
+          margin: "0 0 10px",
+          fontWeight: 800,
+          fontSize: "clamp(1.4rem, 4vw, 2.2rem)",
+          lineHeight: 1.1,
+        }}
+      >
         Sports Card Research
       </h1>
 
-      {/* Controls */}
+      {/* Controls (wrap on mobile) */}
       <div
         style={{
           display: "flex",
-          gap: 14,
+          gap: 10,
           justifyContent: "center",
           alignItems: "center",
           flexWrap: "wrap",
-          margin: "14px 0 18px",
+          margin: "12px 0 14px",
         }}
       >
         {/* Sport toggle */}
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
           {["All", "Baseball", "Basketball", "Football"].map((s) => (
             <button
               key={s}
@@ -563,6 +576,7 @@ export default function Research() {
                 color: sport === s ? "#fff" : burntOrange,
                 fontWeight: 700,
                 cursor: "pointer",
+                fontSize: "0.9rem",
               }}
             >
               {s}
@@ -571,7 +585,7 @@ export default function Research() {
         </div>
 
         {/* X / Y dropdowns */}
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <label style={{ fontSize: 13 }}>X:</label>
           <select
             value={xKey || ""}
@@ -579,7 +593,13 @@ export default function Research() {
               setXKey(e.target.value || null);
               setXDomain(null);
             }}
-            style={{ padding: "6px 8px", borderRadius: 8, border: "1px solid #ccc", minWidth: 180 }}
+            style={{
+              padding: "6px 8px",
+              borderRadius: 8,
+              border: "1px solid #ccc",
+              minWidth: 160,
+              maxWidth: 220,
+            }}
           >
             <option value="">-- Choose X --</option>
             {numericCols.map((c) => (
@@ -596,7 +616,13 @@ export default function Research() {
               setYKey(e.target.value || null);
               setYDomain(null);
             }}
-            style={{ padding: "6px 8px", borderRadius: 8, border: "1px solid #ccc", minWidth: 180 }}
+            style={{
+              padding: "6px 8px",
+              borderRadius: 8,
+              border: "1px solid #ccc",
+              minWidth: 160,
+              maxWidth: 220,
+            }}
           >
             <option value="">-- Choose Y --</option>
             {numericCols.map((c) => (
@@ -618,6 +644,7 @@ export default function Research() {
             color: burntOrange,
             fontWeight: 700,
             cursor: "pointer",
+            fontSize: "0.9rem",
           }}
           title="Reset zoom"
         >
@@ -626,66 +653,66 @@ export default function Research() {
       </div>
 
       {/* ==== SCATTERPLOT ==== */}
-      <div style={{ display: "flex", justifyContent: "center" }}>
+      <div ref={scatterRef} style={{ width: "100%", maxWidth: "100%", display: "flex", justifyContent: "center" }}>
         <svg
           ref={plotRef}
-          width={WIDTH}
-          height={HEIGHT}
-          style={{ border: "1px solid #eee", borderRadius: 12, background: "#fff" }}
-          onMouseDown={onPlotMouseDown}
-          onMouseMove={onPlotMouseMove}
-          onMouseUp={onPlotMouseUp}
+          width={S_WIDTH}
+          height={S_HEIGHT}
+          style={{ border: "1px solid #eee", borderRadius: 12, background: "#fff", touchAction: "none" }}
+          onPointerDown={onPlotPointerDown}
+          onPointerMove={onPlotPointerMove}
+          onPointerUp={onPlotPointerUp}
           onDoubleClick={resetZoom}
         >
           {/* Quadrant background rectangles */}
           {/* UL (blue) */}
           <rect
-            x={M.left}
-            y={M.top}
-            width={xScale((xExtent[0] + xExtent[1]) / 2) - M.left}
-            height={yScale((yExtent[0] + yExtent[1]) / 2) - M.top}
+            x={SM.left}
+            y={SM.top}
+            width={xScale((xExtent[0] + xExtent[1]) / 2) - SM.left}
+            height={yScale((yExtent[0] + yExtent[1]) / 2) - SM.top}
             fill="rgba(0,123,255,0.12)"
           />
           {/* UR (green) */}
           <rect
             x={midX_px}
-            y={M.top}
-            width={M.left + innerW - midX_px}
-            height={midY_px - M.top}
+            y={SM.top}
+            width={SM.left + S_innerW - midX_px}
+            height={midY_px - SM.top}
             fill="rgba(40,167,69,0.12)"
           />
           {/* LL (red) */}
           <rect
-            x={M.left}
+            x={SM.left}
             y={midY_px}
-            width={midX_px - M.left}
-            height={M.top + innerH - midY_px}
+            width={midX_px - SM.left}
+            height={SM.top + S_innerH - midY_px}
             fill="rgba(220,53,69,0.12)"
           />
           {/* LR (yellow) */}
           <rect
             x={midX_px}
             y={midY_px}
-            width={M.left + innerW - midX_px}
-            height={M.top + innerH - midY_px}
+            width={SM.left + S_innerW - midX_px}
+            height={SM.top + S_innerH - midY_px}
             fill="rgba(255,193,7,0.18)"
           />
 
           {/* Axes */}
-          <line x1={M.left} y1={M.top + innerH} x2={M.left + innerW} y2={M.top + innerH} stroke="#999" />
-          <line x1={M.left} y1={M.top} x2={M.left} y2={M.top + innerH} stroke="#999" />
+          <line x1={SM.left} y1={SM.top + S_innerH} x2={SM.left + S_innerW} y2={SM.top + S_innerH} stroke="#999" />
+          <line x1={SM.left} y1={SM.top} x2={SM.left} y2={SM.top + S_innerH} stroke="#999" />
 
           {/* Midlines */}
-          <line x1={midX_px} y1={M.top} x2={midX_px} y2={M.top + innerH} stroke="#aaa" strokeDasharray="4,4" />
-          <line x1={M.left} y1={midY_px} x2={M.left + innerW} y2={midY_px} stroke="#aaa" strokeDasharray="4,4" />
+          <line x1={midX_px} y1={SM.top} x2={midX_px} y2={SM.top + S_innerH} stroke="#aaa" strokeDasharray="4,4" />
+          <line x1={SM.left} y1={midY_px} x2={SM.left + S_innerW} y2={midY_px} stroke="#aaa" strokeDasharray="4,4" />
 
           {/* X ticks */}
-          {ticks(xExtent[0], xExtent[1], 5).map((t, i) => {
+          {ticks(xExtent[0], xExtent[1], smallScreen ? 4 : 6).map((t, i) => {
             const x = xScale(t);
             return (
               <g key={`xt-${i}`}>
-                <line x1={x} y1={M.top + innerH} x2={x} y2={M.top + innerH + 6} stroke="#999" />
-                <text x={x} y={M.top + innerH + 20} fontSize={11} textAnchor="middle" fill="#333">
+                <line x1={x} y1={SM.top + S_innerH} x2={x} y2={SM.top + S_innerH + 6} stroke="#999" />
+                <text x={x} y={SM.top + S_innerH + 18} fontSize={smallScreen ? 10 : 11} textAnchor="middle" fill="#333">
                   {formatNum(t)}
                 </text>
               </g>
@@ -693,12 +720,12 @@ export default function Research() {
           })}
 
           {/* Y ticks */}
-          {ticks(yExtent[0], yExtent[1], 5).map((t, i) => {
+          {ticks(yExtent[0], yExtent[1], smallScreen ? 4 : 6).map((t, i) => {
             const y = yScale(t);
             return (
               <g key={`yt-${i}`}>
-                <line x1={M.left - 6} y1={y} x2={M.left} y2={y} stroke="#999" />
-                <text x={M.left - 10} y={y + 3} fontSize={11} textAnchor="end" fill="#333">
+                <line x1={SM.left - 6} y1={y} x2={SM.left} y2={y} stroke="#999" />
+                <text x={SM.left - 10} y={y + 3} fontSize={smallScreen ? 10 : 11} textAnchor="end" fill="#333">
                   {formatNum(t)}
                 </text>
               </g>
@@ -706,13 +733,13 @@ export default function Research() {
           })}
 
           {/* Axis Labels */}
-          <text x={M.left + innerW / 2} y={HEIGHT - 8} textAnchor="middle" fontSize={12} fill="#333">
+          <text x={SM.left + S_innerW / 2} y={S_HEIGHT - 8} textAnchor="middle" fontSize={12} fill="#333">
             {xKey || "X"}
           </text>
           <text
             x={16}
-            y={M.top + innerH / 2}
-            transform={`rotate(-90, 16, ${M.top + innerH / 2})`}
+            y={SM.top + S_innerH / 2}
+            transform={`rotate(-90, 16, ${SM.top + S_innerH / 2})`}
             textAnchor="middle"
             fontSize={12}
             fill="#333"
@@ -722,18 +749,42 @@ export default function Research() {
 
           {/* Regression line */}
           {regSegment && (
-            <line x1={regSegment.x0} y1={regSegment.y0} x2={regSegment.x1} y2={regSegment.y1} stroke="#333" strokeWidth="2" opacity="0.7" />
+            <line
+              x1={regSegment.x0}
+              y1={regSegment.y0}
+              x2={regSegment.x1}
+              y2={regSegment.y1}
+              stroke="#333"
+              strokeWidth="2"
+              opacity="0.7"
+            />
           )}
 
-          {/* Names as markers (burnt orange, adaptive anchors) */}
+          {/* Points / Labels */}
           {points.map((d, i) => {
             const px = xScale(d.x);
             const py = yScale(d.y);
 
+            // On small screens show dots with tooltips; on larger, show names
+            if (smallScreen) {
+              return (
+                <circle
+                  key={`pt-${i}`}
+                  cx={px}
+                  cy={py}
+                  r={4}
+                  fill={burntOrange}
+                  onPointerEnter={(e) => setTip({ x: px, y: py - 10, content: `${d.name} (${formatNum(d.x)}, ${formatNum(d.y)})` })}
+                  onPointerLeave={() => setTip(null)}
+                  onPointerDown={(e) => setTip({ x: px, y: py - 10, content: `${d.name} (${formatNum(d.x)}, ${formatNum(d.y)})` })}
+                />
+              );
+            }
+
             // Adjust label anchoring to avoid clipping at edges
             let anchor = "middle";
-            if (px > WIDTH - 40) anchor = "end";         // near right edge -> draw leftward
-            else if (px < M.left + 40) anchor = "start"; // near left edge  -> draw rightward
+            if (px > S_WIDTH - 40) anchor = "end";
+            else if (px < SM.left + 40) anchor = "start";
 
             return (
               <text
@@ -764,31 +815,52 @@ export default function Research() {
               strokeDasharray="4,4"
             />
           )}
+
+          {/* Tooltip (scatter) */}
+          {tip && (
+            <g transform={`translate(${tip.x}, ${tip.y})`}>
+              <rect x={-110} y={-28} width={220} height={24} rx={6} ry={6} fill="rgba(0,0,0,0.75)" />
+              <text x={0} y={-12} textAnchor="middle" fontSize={11} fill="#fff">
+                {tip.content}
+              </text>
+            </g>
+          )}
         </svg>
       </div>
 
       {/* ==== TRENDS LINE CHART CONTROLS ==== */}
       <div
         style={{
-          marginTop: 18,
+          marginTop: 16,
           display: "flex",
-          gap: 16,
+          gap: 12,
           alignItems: "center",
           justifyContent: "center",
           flexWrap: "wrap",
         }}
       >
-        <div style={{ fontWeight: 700, color: "#333" }}>Sentiment Rankings:</div>
+        <div style={{ fontWeight: 700, color: "#333", fontSize: "clamp(0.95rem, 2.5vw, 1.05rem)" }}>
+          Sentiment Rankings:
+        </div>
+
+        {/* Multi-select (kept but scrollable for mobile) */}
         <select
           multiple
-          size={Math.min(8, Math.max(3, seriesKeys.length || 3))}
+          size={Math.min(8, Math.max(4, seriesKeys.length || 4))}
           value={selectedSeries}
           onChange={(e) => {
             const opts = Array.from(e.target.selectedOptions).map((o) => o.value);
             setSelectedSeries(opts);
           }}
-          style={{ minWidth: 260, padding: 6, borderRadius: 8, border: "1px solid #ccc" }}
-          title="Hold Ctrl/Cmd to select multiple"
+          style={{
+            minWidth: 220,
+            maxWidth: 320,
+            padding: 6,
+            borderRadius: 8,
+            border: "1px solid #ccc",
+            maxHeight: 180,
+          }}
+          title="Select 1+ series"
         >
           {seriesKeys
             .slice()
@@ -801,7 +873,16 @@ export default function Research() {
         </select>
 
         {/* legend */}
-        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", maxWidth: 480 }}>
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            alignItems: "center",
+            flexWrap: "wrap",
+            maxWidth: 520,
+            justifyContent: "center",
+          }}
+        >
           {selectedSeries.map((k) => (
             <div key={`lg-${k}`} style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <span style={{ display: "inline-block", width: 14, height: 3, background: colorFor(k) }} />
@@ -812,11 +893,11 @@ export default function Research() {
       </div>
 
       {/* ==== TRENDS LINE CHART ==== */}
-      <div style={{ display: "flex", justifyContent: "center", marginTop: 8 }}>
-        <svg width={TW} height={TH} style={{ border: "1px solid #eee", borderRadius: 12, background: "#fff" }}>
+      <div ref={trendsRef} style={{ width: "100%", maxWidth: "100%", display: "flex", justifyContent: "center", marginTop: 8 }}>
+        <svg width={T_WIDTH} height={T_HEIGHT} style={{ border: "1px solid #eee", borderRadius: 12, background: "#fff" }}>
           {/* axes */}
-          <line x1={TM.left} y1={TM.top + TinnerH} x2={TM.left + TinnerW} y2={TM.top + TinnerH} stroke="#999" />
-          <line x1={TM.left} y1={TM.top} x2={TM.left} y2={TM.top + TinnerH} stroke="#999" />
+          <line x1={TM.left} y1={TM.top + T_innerH} x2={TM.left + T_innerW} y2={TM.top + T_innerH} stroke="#999" />
+          <line x1={TM.left} y1={TM.top} x2={TM.left} y2={TM.top + T_innerH} stroke="#999" />
 
           {/* Y ticks 0..100 */}
           {[0, 20, 40, 60, 80, 100].map((val, i) => {
@@ -824,7 +905,7 @@ export default function Research() {
             return (
               <g key={`ty-${i}`}>
                 <line x1={TM.left - 6} y1={y} x2={TM.left} y2={y} stroke="#999" />
-                <text x={TM.left - 10} y={y + 3} fontSize={11} textAnchor="end" fill="#333">
+                <text x={TM.left - 10} y={y + 3} fontSize={10} textAnchor="end" fill="#333">
                   {val}
                 </text>
               </g>
@@ -836,8 +917,8 @@ export default function Research() {
             const x = tScale(d);
             return (
               <g key={`tt-${i}`}>
-                <line x1={x} y1={TM.top + TinnerH} x2={x} y2={TM.top + TinnerH + 6} stroke="#999" />
-                <text x={x} y={TM.top + TinnerH + 20} fontSize={11} textAnchor="middle" fill="#333">
+                <line x1={x} y1={TM.top + T_innerH} x2={x} y2={TM.top + T_innerH + 6} stroke="#999" />
+                <text x={x} y={TM.top + T_innerH + 18} fontSize={10} textAnchor="middle" fill="#333">
                   {fmtMonth(d)}
                 </text>
               </g>
@@ -845,18 +926,18 @@ export default function Research() {
           })}
 
           {/* labels */}
-          <text x={TM.left + TinnerW / 2} y={TH - 8} textAnchor="middle" fontSize={12} fill="#333">
+          <text x={TM.left + T_innerW / 2} y={T_HEIGHT - 8} textAnchor="middle" fontSize={12} fill="#333">
             {timeKey || "Time"}
           </text>
           <text
             x={16}
-            y={TM.top + TinnerH / 2}
-            transform={`rotate(-90, 16, ${TM.top + TinnerH / 2})`}
+            y={TM.top + T_innerH / 2}
+            transform={`rotate(-90, 16, ${TM.top + T_innerH / 2})`}
             textAnchor="middle"
             fontSize={12}
             fill="#333"
           >
-            Sentiment Rank (12-Mo Average) (0–100)
+            Sentiment Rank (0–100)
           </text>
 
           {/* series lines */}
@@ -865,14 +946,50 @@ export default function Research() {
             const d = buildPath(pts);
             return <path key={`path-${k}`} d={d} fill="none" stroke={colorFor(k)} strokeWidth="2" opacity="0.9" />;
           })}
+
+          {/* hover/tap tooltips on line points (sparse sampling for perf) */}
+          {selectedSeries.map((k) => {
+            const pts = trendsPointsBySeries[k] || [];
+            const every = Math.ceil(pts.length / 60) || 1; // at most ~60 hotspots
+            return pts.map((p, i) => {
+              if (i % every !== 0) return null;
+              const x = tScale(p.t), y = tyScale(p.y);
+              const label = `${k}: ${p.y} • ${fmtMonth(p.t)}`;
+              return (
+                <g key={`hot-${k}-${i}`}>
+                  <circle
+                    cx={x}
+                    cy={y}
+                    r={6}
+                    fill="transparent"
+                    stroke="transparent"
+                    onPointerEnter={() => setTip({ x, y: y - 12, content: label })}
+                    onPointerLeave={() => setTip(null)}
+                    onPointerDown={() => setTip({ x, y: y - 12, content: label })}
+                  />
+                </g>
+              );
+            });
+          })}
+
+          {/* Tooltip (shared) */}
+          {tip && (
+            <g transform={`translate(${clamp(tip.x, TM.left + 60, TM.left + T_innerW - 60)}, ${tip.y})`}>
+              <rect x={-110} y={-28} width={220} height={24} rx={6} ry={6} fill="rgba(0,0,0,0.75)" />
+              <text x={0} y={-12} textAnchor="middle" fontSize={11} fill="#fff">
+                {tip.content}
+              </text>
+            </g>
+          )}
         </svg>
       </div>
 
       {/* Disclosure text (kept beneath both charts) */}
-      <div style={{ textAlign: "center", marginTop: 10 }}>
-        <span style={{ color: burntOrange, fontSize: 12 }}>
-          Source:  Sports-Reference.com, Google, and Card Ladder with data transformed by Longhorn Cards and Collectibles.
-          Composite Rank includes Technical Rank (card prices), Sentiment Rank (Google Trends), and Fundamental Rank (player statistics).
+      <div style={{ textAlign: "center", marginTop: 10, padding: "0 8px" }}>
+        <span style={{ color: burntOrange, fontSize: "clamp(10px, 2.6vw, 12px)" }}>
+          Source: Sports-Reference.com, Google, and Card Ladder with data transformed by Longhorn Cards and
+          Collectibles. Composite Rank includes Technical Rank (card prices), Sentiment Rank (Google Trends), and
+          Fundamental Rank (player statistics).
         </span>
       </div>
 
