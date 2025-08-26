@@ -147,8 +147,12 @@ export default function Research() {
         if (guessedSport) numCols = numCols.filter((c) => c !== guessedSport);
 
         // Exclude specific fields from X/Y dropdowns
-        const excludedLC = new Set(["3-Mo Ret", "12-Mo Ret", "3mo RS", "12mo RS"].map((s) => s.toLowerCase()));
-        numCols = numCols.filter((c) => !excludedLC.has(c.toLowerCase()));
+        const excludedLC = new Set(
+          ["3-Mo Ret", "12-Mo Ret", "3mo RS", "12mo RS", "Fundamental Change"].map((s) =>
+            s.toLowerCase()
+          )
+        );
+        numCols = numCols.filter((c) => !excludedLC.has(c.toLowerCase())); // <-- removes Fundamental Change
 
         // Preferred defaults (only if still in numCols after exclusions)
         const prefer = (cands) => {
@@ -314,12 +318,8 @@ export default function Research() {
     return [min - span * 0.05, max + span * 0.05];
   }
 
-  // Axis policy: 0–100 for all fields EXCEPT "Fundamental Change" (autoscale). Allow zoom within policy.
-  const getExtent = (axisKey, domain, auto) => {
-    const isFundChange = axisKey && axisKey.toLowerCase() === "fundamental change".toLowerCase();
-    if (isFundChange) {
-      return domain ? domain : pad(auto[0], auto[1]);
-    }
+  // Axis policy: fixed 0–100 (common for your ranks). Allow zoom within policy.
+  const getExtent = (domain, _auto) => {
     if (domain) {
       const lo = clamp(domain[0], 0, 100);
       const hi = clamp(domain[1], 0, 100);
@@ -328,8 +328,8 @@ export default function Research() {
     return [0, 100];
   };
 
-  const xExtent = getExtent(xKey, xDomain, autoX);
-  const yExtent = getExtent(yKey, yDomain, autoY);
+  const xExtent = getExtent(xDomain, autoX);
+  const yExtent = getExtent(yDomain, autoY);
 
   const xScale = (v) => SM.left + ((v - xExtent[0]) / (xExtent[1] - xExtent[0])) * S_innerW;
   const yScale = (v) => SM.top + S_innerH - ((v - yExtent[0]) / (yExtent[1] - yExtent[0])) * S_innerH;
@@ -774,9 +774,13 @@ export default function Research() {
                   cy={py}
                   r={4}
                   fill={burntOrange}
-                  onPointerEnter={(e) => setTip({ x: px, y: py - 10, content: `${d.name} (${formatNum(d.x)}, ${formatNum(d.y)})` })}
+                  onPointerEnter={() =>
+                    setTip({ x: px, y: py - 10, content: `${d.name} (${formatNum(d.x)}, ${formatNum(d.y)})` })
+                  }
                   onPointerLeave={() => setTip(null)}
-                  onPointerDown={(e) => setTip({ x: px, y: py - 10, content: `${d.name} (${formatNum(d.x)}, ${formatNum(d.y)})` })}
+                  onPointerDown={() =>
+                    setTip({ x: px, y: py - 10, content: `${d.name} (${formatNum(d.x)}, ${formatNum(d.y)})` })
+                  }
                 />
               );
             }
@@ -989,8 +993,7 @@ export default function Research() {
         <span style={{ color: burntOrange, fontSize: "clamp(10px, 2.6vw, 12px)" }}>
           Source: Sports-Reference.com, Google, and Card Ladder with data transformed by Longhorn Cards and
           Collectibles. Composite Rank includes Technical Rank (card prices), Sentiment Rank (Google Trends), and
-          Fundamental Rank (player statistics).  Fundamental Change reflects the impact of the most recent season
-          on the career average.
+          Fundamental Rank (player statistics).
         </span>
       </div>
 
