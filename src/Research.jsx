@@ -463,7 +463,7 @@ export default function Research() {
   // Trends container width / height
   const [trendsRef, trendsW] = useContainerWidth(320);
   const T_WIDTH = trendsW;
-  const T_HEIGHT = Math.round(clamp(trendsW * 0.5, 220, 380));
+  const T_HEIGHT = Math.round(clamp(trendsW * 0.62, 260, 560));
   const TM = { top: 24, right: 16, bottom: 48, left: 56 };
   const T_innerW = T_WIDTH - TM.left - TM.right;
   const T_innerH = T_HEIGHT - TM.top - TM.bottom;
