@@ -298,15 +298,15 @@ export default function Blog() {
       <article style={entryStyle}>
         <h2 style={{ color: "#BF5700" }}>Understanding Rankings</h2>
         <p>
-          Longhorn Cards and Collectibles calculates a number of different rankings that help determine the overall strength and 
+          Longhorn Cards and Collectibles calculates a number of different rankings that help gauge the overall strength and 
           quality of a sports player for determining potential card price appreciation over the longer term.
         </p>
         <p>
-          The Composite Rank is a combination of Technical Rank (based on historical card pricess), Sentiment Rank (based on Google Trends), 
-          and Fundamental Rank (based on player career statistics).
+          The Composite Rank is a combination of Technical Rank (based on historical card prices), Sentiment Rank (based on Google Trends), 
+          and Fundamental Rank (based on player's career statistics).
         </p>
         <p>
-          The combination of these different rankings, in combination with changes to a players fundamentals (statistics), helps to 
+          The combination of these different rankings, along with changes to a players fundamentals (statistics), helps to 
           determine if that card should be purchased.
         </p>
         <p>
@@ -314,7 +314,7 @@ export default function Blog() {
             average season to determine if they are outperforming, which should lead to robust card price returns.
         </p>
         <p>
-            Overall, the rankings provide a quantiative way to evaulate players based on numerous criteria in order to determine if they 
+            Overall, the rankings provide a quantitative way to evaulate players based on numerous criteria in order to determine if they 
             are suitable for your collection.
         </p>
         <img
