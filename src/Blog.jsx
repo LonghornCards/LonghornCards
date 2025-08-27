@@ -233,10 +233,10 @@ export default function Blog() {
             rankings improve and offer more of a balance between risk and reward.
         </p>
         <img
-          src="/Scatterplot.png"
-          alt="Scatterplot of Rankings"
+          src="/Scatter.png"
+          alt="Scatter"
           style={imgStyle}
-          onClick={() => openImage("/Scatterplot.png")}
+          onClick={() => openImage("/Scatter.png")}
         />
         <div style={actionsRow}>
           <button style={openBtn} onClick={() => openPdf("/Scatterplot.pdf")}>
@@ -245,7 +245,7 @@ export default function Blog() {
           <a style={linkBtn} href="/Scatterplot.pdf" download>
             Download PDF
           </a>
-          <a style={linkBtn} href="/Scatterplot.png" download>
+          <a style={linkBtn} href="/Scatter.png" download>
             Download Image
           </a>
         </div>
