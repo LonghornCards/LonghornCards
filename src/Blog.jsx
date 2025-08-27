@@ -211,7 +211,7 @@ export default function Blog() {
 
 {/* Blog Entry 1 */}
       <article style={entryStyle}>
-        <h2 style={{ color: "#BF5700" }}>Scatterplot Overview</h2>
+        <h2 style={{ color: "#BF5700" }}>Scatterplot Overview (August 2025)</h2>
         <p>
           The Longhorn Cards and Collectibles proprietary scatterplot allows for the analysis of player Composite Rankings, 
           Fundamental Rankings, Technical Rankings, and Sentiment Rankings.
@@ -253,7 +253,7 @@ export default function Blog() {
 
       {/* Blog Entry 2 */}
       <article style={entryStyle}>
-        <h2 style={{ color: "#BF5700" }}>Sentiment Rankings</h2>
+        <h2 style={{ color: "#BF5700" }}>Sentiment Rankings (August 2025)</h2>
         <p>
           Sentiment Rankings are based on Google Trends data, and the rankings provide a sense of how relevant and popular 
           the respective players are versus other players.
@@ -296,7 +296,7 @@ export default function Blog() {
 
 {/* Blog Entry 3 */}
       <article style={entryStyle}>
-        <h2 style={{ color: "#BF5700" }}>Understanding Rankings</h2>
+        <h2 style={{ color: "#BF5700" }}>Understanding Rankings (August 2025)</h2>
         <p>
           Longhorn Cards and Collectibles calculates a number of different rankings that help gauge the overall strength and 
           quality of a sports player for determining potential card price appreciation over the longer term.
@@ -338,7 +338,7 @@ export default function Blog() {
 
 {/* Blog Entry 4 */}
       <article style={entryStyle}>
-        <h2 style={{ color: "#BF5700" }}>Card Ladder Indexes</h2>
+        <h2 style={{ color: "#BF5700" }}>Card Ladder Indexes (August 2025)</h2>
         <p>
           Over the past year, the Card Ladder CL50 Index is up approximately 23% and has returned 1400% since inception in 2004,
           which is a CAGR of around 14% per year.
@@ -371,7 +371,7 @@ export default function Blog() {
 
       {/* Blog Entry 5 */}
       <article style={entryStyle}>
-        <h2 style={{ color: "#BF5700" }}>Babe Ruth Card Prices</h2>
+        <h2 style={{ color: "#BF5700" }}>Babe Ruth Card Prices (August 2025)</h2>
         <p>
           According to Card Ladder data, Babe Ruth card prices have broken out convincingly from the bear market lows post the Covid bubble.
         </p>
@@ -400,7 +400,7 @@ export default function Blog() {
 
       {/* Blog Entry 6 */}
       <article style={entryStyle}>
-        <h2 style={{ color: "#BF5700" }}>Geno Smith Card Prices</h2>
+        <h2 style={{ color: "#BF5700" }}>Geno Smith Card Prices (August 2025)</h2>
         <p>
           Geno Smith has executed on the field the past few years, with a breakout season last year. Last year's success resulted in
           Fundamental Change according to our calculation of 153% versus his career average, and as a result his card prices are up
@@ -435,7 +435,7 @@ export default function Blog() {
 
       {/* Blog Entry 7 */}
       <article style={entryStyle}>
-        <h2 style={{ color: "#BF5700" }}>History of Sports Trading Cards</h2>
+        <h2 style={{ color: "#BF5700" }}>History of Sports Trading Cards (August 2025)</h2>
         <p>
           Sports Trading Cards have a long and illustrious history that spans nearly two centuries. 
          </p>
@@ -474,7 +474,7 @@ export default function Blog() {
 
       {/* Blog Entry 8 */}
       <article style={entryStyle}>
-        <h2 style={{ color: "#BF5700" }}>BGS vs. PSA GEM MINT Sales Comparison</h2>
+        <h2 style={{ color: "#BF5700" }}>BGS vs. PSA GEM MINT Sales Comparison (August 2025)</h2>
         <p>
           Per ALT, there is a striking difference between BGS and PSA GEM MINT rated cards. 
          </p>
@@ -505,7 +505,7 @@ export default function Blog() {
 
 {/* Blog Entry 9 */}
       <article style={entryStyle}>
-        <h2 style={{ color: "#BF5700" }}>"Shoeless" Joe Jackson Card Prices</h2>
+        <h2 style={{ color: "#BF5700" }}>"Shoeless" Joe Jackson Card Prices (August 2025)</h2>
         <p>
           Over the past year, card prices for "Shoeless" Joe Jackson have soared 42% versus 18% for the Card Ladder Pre-War Vintage Index - which tracks cards released 1945 and earlier.
          </p>
@@ -545,7 +545,7 @@ export default function Blog() {
 
       {/* Blog Entry 10 */}
       <article style={entryStyle}>
-        <h2 style={{ color: "#BF5700" }}>Sports Card Grading Companies</h2>
+        <h2 style={{ color: "#BF5700" }}>Sports Card Grading Companies (August 2025)</h2>
         <p>
           This is a list of sports card grading companies with their respective non-bulk minimum prices, estimated turnaround time, and maximum 
           insured values.
@@ -586,7 +586,7 @@ export default function Blog() {
 
       {/* Blog Entry 11 */}
       <article style={entryStyle}>
-        <h2 style={{ color: "#BF5700" }}>Top Sports Card Grading Companies</h2>
+        <h2 style={{ color: "#BF5700" }}>Top Sports Card Grading Companies (August 2025)</h2>
         <p>
           PSA, BGS, SGC, and CGC are the top-tier sports card grading companies according to ChatGPT and other online sources.
          </p>
