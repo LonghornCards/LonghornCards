@@ -472,6 +472,37 @@ export default function Blog() {
         </div>
       </article>
 
+      {/* Blog Entry 8 */}
+      <article style={entryStyle}>
+        <h2 style={{ color: "#BF5700" }}>BGS vs. PSA GEM MINT Sales Comparison</h2>
+        <p>
+          Per ALT, there is a striking difference between BGS and PSA GEM MINT rated cards. 
+         </p>
+         <p> 
+          The sales prices for PSA are often 2x-3x that of BGS for otherwise the same GEM MINT grade level.
+        </p>
+        <p>
+          This is yet another example of PSA's dominance in the grading space, and how they can command a premium to other grading companies. 
+         </p>
+         <img
+          src="/BGSvsPSA.png"
+          alt="BGS vs. PSA GEM MINT"
+          style={imgStyle}
+          onClick={() => openImage("/BGSvsPSA.png")}
+        />
+        <div style={actionsRow}>
+          <button style={openBtn} onClick={() => openPdf("/BGSvsPSA.pdf")}>
+            View PDF
+          </button>
+          <a style={linkBtn} href="/BGSvsPSA.pdf" download>
+            Download PDF
+          </a>
+          <a style={linkBtn} href="/BGSvsPSA.png" download>
+            Download Image
+          </a>
+        </div>
+      </article>
+
       {/* Back to Home */}
       <div style={{ textAlign: "center", marginTop: "30px" }}>
         <Link to="/" style={{ color: "#BF5700", fontWeight: "bold" }}>
