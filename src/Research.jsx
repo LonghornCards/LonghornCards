@@ -95,6 +95,18 @@ export default function Research() {
   const [sportKey, setSportKey] = useState(null);
   const [numericCols, setNumericCols] = useState([]);
 
+  // Columns for modal summary (found robustly)
+  const [compCol, setCompCol] = useState(null);
+  const [fundCol, setFundCol] = useState(null);
+  const [techCol, setTechCol] = useState(null);
+  const [sentCol, setSentCol] = useState(null);
+  const [fundChgCol, setFundChgCol] = useState(null);
+  const [ratingCol, setRatingCol] = useState(null);
+
+  // Modal state
+  const [showModal, setShowModal] = useState(false);
+  const [selectedPlayer, setSelectedPlayer] = useState("");
+
   // Zoom domains (null = none)
   const [xDomain, setXDomain] = useState(null);
   const [yDomain, setYDomain] = useState(null);
@@ -113,7 +125,7 @@ export default function Research() {
   const [seriesKeys, setSeriesKeys] = useState([]); // numeric series columns
   const [selectedSeries, setSelectedSeries] = useState([]); // multiple selection
 
-  // ---------- DATA LOAD: Composite (scatter) ----------
+  // ---------- DATA LOAD: Composite (scatter + modal) ----------
   useEffect(() => {
     (async () => {
       try {
@@ -139,7 +151,55 @@ export default function Research() {
         const guessedName = findCol(["Player", "Name", "PLAYER", "NAME"]);
         const guessedSport = findCol(["Sport", "SPORT", "League", "LEAGUE"]);
 
-        // Detect numeric columns
+        // Robust metric columns (modal & general use)
+        const compositeCol = findCol([
+          "Composite Rank",
+          "Composite",
+          "Comp3Src",
+          "CompositeRank",
+          "Comp2Src",
+          "Composite_Rank",
+          "compRank",
+        ]);
+        const fundamentalCol = findCol([
+          "Fundamental Rank",
+          "Fundamentals Rank",
+          "Fundamental",
+          "FundRank",
+          "FUNDAMENTAL RANK",
+        ]);
+        const technicalCol = findCol([
+          "Technical Rank",
+          "Technical",
+          "Tech Rank",
+          "TechScaled",
+          "TECHNICAL RANK",
+        ]);
+        const sentimentCol = findCol([
+          "Sentiment Rank",
+          "Sentiment",
+          "gRank",
+          "SentimentRank",
+          "SENTIMENT RANK",
+        ]);
+        const fundamentalChangeCol = findCol([
+          "Fundamental Change",
+          "Fundamental Δ",
+          "Fund Change",
+          "FundChange",
+          "FUNDAMENTAL CHANGE",
+        ]);
+        const ratingDetectedCol = findCol([
+          "Rating",
+          "RATING",
+          "Trade Rating",
+          "Recommendation",
+          "Reco",
+          "Buy/Hold",
+          "Status",
+        ]);
+
+        // Detect numeric columns (for scatter X/Y dropdowns)
         const isNum = (c) => json.some((r) => r[c] !== null && r[c] !== "" && !isNaN(Number(r[c])));
         let numCols = cols.filter(isNum);
 
@@ -152,7 +212,7 @@ export default function Research() {
             s.toLowerCase()
           )
         );
-        numCols = numCols.filter((c) => !excludedLC.has(c.toLowerCase())); // <-- removes Fundamental Change
+        numCols = numCols.filter((c) => !excludedLC.has(c.toLowerCase())); // keep Fundamental Change out of scatter
 
         // Preferred defaults (only if still in numCols after exclusions)
         const prefer = (cands) => {
@@ -165,14 +225,14 @@ export default function Research() {
         };
 
         const preferredX =
-          prefer(["gRank", "sentiment", "sentimentRank"]) ||
-          prefer(["techScaled", "technical", "techRank"]) ||
-          prefer(["comp3src", "composite", "comp2src"]);
+          prefer(["gRank", "sentiment", "sentimentrank"]) ||
+          prefer(["techscaled", "technical", "tech rank"]) ||
+          prefer(["comp3src", "composite", "comp2src", "composite rank"]);
 
         const preferredY =
-          prefer(["comp3src", "composite", "comp2src"]) ||
-          prefer(["gRank", "sentiment", "sentimentRank"]) ||
-          prefer(["techScaled", "technical", "techRank"]);
+          prefer(["composite rank", "comp3src", "composite", "comp2src"]) ||
+          prefer(["gRank", "sentiment", "sentimentrank"]) ||
+          prefer(["techscaled", "technical", "tech rank"]);
 
         let x = preferredX;
         let y = preferredY;
@@ -190,6 +250,14 @@ export default function Research() {
         setNumericCols(numCols);
         setXKey(x);
         setYKey(y);
+
+        // Set modal metric columns
+        setCompCol(compositeCol);
+        setFundCol(fundamentalCol);
+        setTechCol(technicalCol);
+        setSentCol(sentimentCol);
+        setFundChgCol(fundamentalChangeCol);
+        setRatingCol(ratingDetectedCol);
       } catch (e) {
         console.error(e);
       }
@@ -241,7 +309,8 @@ export default function Research() {
         })();
 
         // series = numeric columns except time
-        const isNumCol = (c) => json.some((r) => r[c] !== null && r[c] !== "" && !isNaN(Number(r[c])));
+        const isNumCol = (c) =>
+          json.some((r) => r[c] !== null && r[c] !== "" && !isNaN(Number(r[c])));
         let sKeys = cols.filter((c) => c !== timeGuess && isNumCol(c));
 
         setTrendsRows(json);
@@ -262,6 +331,75 @@ export default function Research() {
       }
     })();
   }, []);
+
+  // ===== Players for modal =====
+  const players = useMemo(() => {
+    if (!rows.length || !nameKey) return [];
+    const set = new Set();
+    for (const r of rows) {
+      const v = r[nameKey];
+      if (v != null && String(v).trim() !== "") set.add(String(v).trim());
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [rows, nameKey]);
+
+  // Summary for selected player (averages if multiple rows found)
+  const playerSummary = useMemo(() => {
+    if (!selectedPlayer || !nameKey) return null;
+    const list = rows.filter(
+      (r) => String(r[nameKey] ?? "").trim().toLowerCase() === selectedPlayer.trim().toLowerCase()
+    );
+    if (!list.length) return null;
+
+    const avgOf = (col) => {
+      if (!col) return null;
+      const vals = list.map((r) => Number(r[col])).filter((v) => !isNaN(v));
+      if (!vals.length) return null;
+      return vals.reduce((a, b) => a + b, 0) / vals.length;
+    };
+
+    const modeOfRating = () => {
+      if (!ratingCol) return null;
+      const vals = list
+        .map((r) => (r[ratingCol] == null ? "" : String(r[ratingCol]).trim()))
+        .filter((v) => v !== "");
+      if (!vals.length) return null;
+
+      // normalize to Buy/Hold (case-insensitive, allow abbreviations)
+      const norm = (s) => {
+        const t = s.toLowerCase();
+        if (t === "buy" || t === "b") return "Buy";
+        if (t === "hold" || t === "h") return "Hold";
+        return s; // fall back to whatever is in file
+      };
+      const normalized = vals.map(norm);
+
+      // frequency count
+      const freq = {};
+      for (const v of normalized) freq[v] = (freq[v] || 0) + 1;
+      let best = normalized[0],
+        bestCount = 0;
+      for (const k of Object.keys(freq)) {
+        if (freq[k] > bestCount) {
+          best = k;
+          bestCount = freq[k];
+        }
+      }
+      // As a tie-break, prefer "Buy" over "Hold" if equal frequency
+      if (freq["Buy"] === freq["Hold"] && freq["Buy"] != null) return "Buy";
+      return best;
+    };
+
+    return {
+      count: list.length,
+      composite: avgOf(compCol),
+      fundamental: avgOf(fundCol),
+      technical: avgOf(techCol),
+      sentiment: avgOf(sentCol),
+      fundChange: avgOf(fundChgCol),
+      rating: modeOfRating(),
+    };
+  }, [rows, nameKey, selectedPlayer, compCol, fundCol, techCol, sentCol, fundChgCol, ratingCol]);
 
   // ===== Scatterplot computations =====
   const filtered = useMemo(() => {
@@ -289,37 +427,15 @@ export default function Research() {
   }, [filtered, xKey, yKey, nameKey]);
 
   // ======= Responsive layout =======
-  // Scatter container width / height (aspect adjusts on mobile)
   const [scatterRef, scatterW] = useContainerWidth(320);
-  const S_WIDTH = scatterW; // full width of container
-  const S_HEIGHT = Math.round(clamp(scatterW * 0.62, 260, 560)); // maintain ~16:10 but cap
+  const S_WIDTH = scatterW;
+  const S_HEIGHT = Math.round(clamp(scatterW * 0.62, 260, 560));
   const SM = { top: 28, right: 16, bottom: 48, left: 56 };
   const S_innerW = S_WIDTH - SM.left - SM.right;
   const S_innerH = S_HEIGHT - SM.top - SM.bottom;
 
-  // Auto extents (un-padded; we'll pad only for autoscaling cases)
-  const autoX = useMemo(() => {
-    if (!points.length) return [0, 1];
-    const min = Math.min(...points.map((p) => p.x));
-    const max = Math.max(...points.map((p) => p.x));
-    return [min, max];
-  }, [points]);
-  const autoY = useMemo(() => {
-    if (!points.length) return [0, 1];
-    const min = Math.min(...points.map((p) => p.y));
-    const max = Math.max(...points.map((p) => p.y));
-    return [min, max];
-  }, [points]);
-
-  function pad(min, max) {
-    if (!(isFinite(min) && isFinite(max))) return [0, 1];
-    if (min === max) return [min - 1, max + 1];
-    const span = max - min;
-    return [min - span * 0.05, max + span * 0.05];
-  }
-
-  // Axis policy: fixed 0–100 (common for your ranks). Allow zoom within policy.
-  const getExtent = (domain, _auto) => {
+  // Axis policy: fixed 0–100
+  const getExtent = (domain) => {
     if (domain) {
       const lo = clamp(domain[0], 0, 100);
       const hi = clamp(domain[1], 0, 100);
@@ -328,8 +444,8 @@ export default function Research() {
     return [0, 100];
   };
 
-  const xExtent = getExtent(xDomain, autoX);
-  const yExtent = getExtent(yDomain, autoY);
+  const xExtent = getExtent(xDomain);
+  const yExtent = getExtent(yDomain);
 
   const xScale = (v) => SM.left + ((v - xExtent[0]) / (xExtent[1] - xExtent[0])) * S_innerW;
   const yScale = (v) => SM.top + S_innerH - ((v - yExtent[0]) / (yExtent[1] - yExtent[0])) * S_innerH;
@@ -338,26 +454,34 @@ export default function Research() {
   const invY = (py) => (1 - (py - SM.top) / S_innerH) * (yExtent[1] - yExtent[0]) + yExtent[0];
 
   const ticks = (min, max, count = 5) => {
-    const arr = [], step = (max - min) / count;
+    const arr = [];
+    const step = (max - min) / count;
     for (let i = 0; i <= count; i++) arr.push(min + i * step);
     return arr;
   };
 
-  // Quadrants (scatter)
+  // Quadrants
   const midX = (xExtent[0] + xExtent[1]) / 2;
   const midY = (yExtent[0] + yExtent[1]) / 2;
   const midX_px = xScale(midX);
   const midY_px = yScale(midY);
 
-  // Regression (scatter)
+  // Regression
   const reg = useMemo(() => {
     if (points.length < 2) return null;
     const n = points.length;
-    let sx = 0, sy = 0, sxx = 0, sxy = 0;
+    let sx = 0,
+      sy = 0,
+      sxx = 0,
+      sxy = 0;
     for (const p of points) {
-      sx += p.x; sy += p.y; sxx += p.x * p.x; sxy += p.x * p.y;
+      sx += p.x;
+      sy += p.y;
+      sxx += p.x * p.x;
+      sxy += p.x * p.y;
     }
-    const xbar = sx / n, ybar = sy / n;
+    const xbar = sx / n,
+      ybar = sy / n;
     const denom = sxx - n * xbar * xbar;
     const m = denom === 0 ? 0 : (sxy - n * xbar * ybar) / denom;
     const b = ybar - m * xbar;
@@ -367,7 +491,10 @@ export default function Research() {
   const regSegment = useMemo(() => {
     if (!reg) return null;
     const { m, b } = reg;
-    const xmin = xExtent[0], xmax = xExtent[1], ymin = yExtent[0], ymax = yExtent[1];
+    const xmin = xExtent[0],
+      xmax = xExtent[1],
+      ymin = yExtent[0],
+      ymax = yExtent[1];
     const candidates = [];
     const y1 = m * xmin + b;
     if (y1 >= ymin && y1 <= ymax) candidates.push({ x: xmin, y: y1 });
@@ -381,11 +508,12 @@ export default function Research() {
     }
     if (candidates.length < 2) return null;
     candidates.sort((a, bp) => a.x - bp.x);
-    const p0 = candidates[0], p1 = candidates[candidates.length - 1];
+    const p0 = candidates[0],
+      p1 = candidates[candidates.length - 1];
     return { x0: xScale(p0.x), y0: yScale(p0.y), x1: xScale(p1.x), y1: yScale(p1.y) };
   }, [reg, xExtent, yExtent]);
 
-  // Pointer handlers for box zoom (mouse + touch)
+  // Pointer handlers for box zoom
   const clampToPlot = (x, y) => {
     const cx = Math.max(SM.left, Math.min(SM.left + S_innerW, x));
     const cy = Math.max(SM.top, Math.min(SM.top + S_innerH, y));
@@ -412,12 +540,17 @@ export default function Research() {
       return;
     }
     const { x0, y0, x1, y1 } = box;
-    const w = Math.abs(x1 - x0), h = Math.abs(y1 - y0);
+    const w = Math.abs(x1 - x0),
+      h = Math.abs(y1 - y0);
     if (w >= 6 && h >= 6) {
-      const left = Math.min(x0, x1), right = Math.max(x0, x1);
-      const top = Math.min(y0, y1), bottom = Math.max(y0, y1);
-      const nx0 = invX(left), nx1 = invX(right);
-      const ny0 = invY(bottom), ny1 = invY(top);
+      const left = Math.min(x0, x1),
+        right = Math.max(x0, x1);
+      const top = Math.min(y0, y1),
+        bottom = Math.max(y1, y0);
+      const nx0 = invX(left),
+        nx1 = invX(right);
+      const ny0 = invY(bottom),
+        ny1 = invY(top);
       if (isFinite(nx0) && isFinite(nx1) && nx1 > nx0) setXDomain([nx0, nx1]);
       if (isFinite(ny0) && isFinite(ny1) && ny1 > ny0) setYDomain([ny0, ny1]);
     }
@@ -429,7 +562,7 @@ export default function Research() {
     setYDomain(null);
   };
 
-  // ===== Trends chart computed data (responsive) =====
+  // ===== Trends chart computed data =====
   const trendsPointsBySeries = useMemo(() => {
     if (!trendsRows.length || !timeKey || !seriesKeys.length) return {};
     const result = {};
@@ -446,7 +579,6 @@ export default function Research() {
     return result;
   }, [trendsRows, timeKey, seriesKeys]);
 
-  // X time domain across all selected series
   const trendsAllPoints = useMemo(() => {
     const arr = [];
     for (const s of selectedSeries) {
@@ -460,7 +592,6 @@ export default function Research() {
     return [trendsAllPoints[0].t, trendsAllPoints[trendsAllPoints.length - 1].t];
   }, [trendsAllPoints]);
 
-  // Trends container width / height
   const [trendsRef, trendsW] = useContainerWidth(320);
   const T_WIDTH = trendsW;
   const T_HEIGHT = Math.round(clamp(trendsW * 0.62, 260, 560));
@@ -473,7 +604,7 @@ export default function Research() {
     const span = t1 - t0 || 1;
     return TM.left + ((d - t0) / span) * T_innerW;
   };
-  const tyScale = (v) => TM.top + T_innerH - ((v - 0) / (100 - 0)) * T_innerH; // 0..100 fixed
+  const tyScale = (v) => TM.top + T_innerH - ((v - 0) / (100 - 0)) * T_innerH;
 
   const buildPath = (pts) => {
     if (!pts || !pts.length) return "";
@@ -484,7 +615,7 @@ export default function Research() {
 
   const timeTicks = useMemo(() => {
     const [t0, t1] = trendsXDomain;
-    const count = 5; // fewer ticks on mobile
+    const count = 5;
     const out = [];
     const span = t1 - t0 || 1;
     for (let i = 0; i <= count; i++) out.push(new Date(t0.getTime() + (i / count) * span));
@@ -497,24 +628,39 @@ export default function Research() {
     return `${y}-${m.toString().padStart(2, "0")}`;
   };
 
-  // Simple categorical color palette
   const palette = [
-    "#0d6efd", "#198754", "#dc3545", "#fd7e14", "#6f42c1",
-    "#20c997", "#0dcaf0", "#6610f2", "#6c757d", "#ffc107",
+    "#0d6efd",
+    "#198754",
+    "#dc3545",
+    "#fd7e14",
+    "#6f42c1",
+    "#20c997",
+    "#0dcaf0",
+    "#6610f2",
+    "#6c757d",
+    "#ffc107",
   ];
   const colorFor = (key) => {
     const i = seriesKeys.indexOf(key);
     return palette[i % palette.length] || "#333";
   };
 
-  // Mobile aids: hide labels if narrow; use dots with tooltip instead
   const smallScreen = S_WIDTH < 520;
 
   // ===== UI =====
   return (
     <div style={{ fontFamily: "Arial, sans-serif", padding: 16, maxWidth: 1200, margin: "0 auto" }}>
-      {/* Back to Home button */}
-      <div style={{ marginBottom: 12 }}>
+      {/* Top Row: Back + Search Player Ranks */}
+      <div
+        style={{
+          marginBottom: 12,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: 10,
+          flexWrap: "wrap",
+        }}
+      >
         <Link
           to="/"
           style={{
@@ -530,6 +676,22 @@ export default function Research() {
         >
           ⬅ Back to Home
         </Link>
+
+        <button
+          onClick={() => setShowModal(true)}
+          style={{
+            background: "transparent",
+            border: "none",
+            color: burntOrange,
+            fontWeight: 800,
+            textDecoration: "underline",
+            cursor: "pointer",
+            fontSize: "clamp(0.95rem, 2.8vw, 1.1rem)",
+          }}
+          title="Open player rank search"
+        >
+          🔎 Search Player Ranks
+        </button>
       </div>
 
       {/* Logo */}
@@ -551,7 +713,7 @@ export default function Research() {
         Sports Card Research
       </h1>
 
-      {/* Controls (wrap on mobile) */}
+      {/* Controls */}
       <div
         style={{
           display: "flex",
@@ -653,19 +815,26 @@ export default function Research() {
       </div>
 
       {/* ==== SCATTERPLOT ==== */}
-      <div ref={scatterRef} style={{ width: "100%", maxWidth: "100%", display: "flex", justifyContent: "center" }}>
+      <div
+        ref={scatterRef}
+        style={{ width: "100%", maxWidth: "100%", display: "flex", justifyContent: "center" }}
+      >
         <svg
           ref={plotRef}
           width={S_WIDTH}
           height={S_HEIGHT}
-          style={{ border: "1px solid #eee", borderRadius: 12, background: "#fff", touchAction: "none" }}
+          style={{
+            border: "1px solid #eee",
+            borderRadius: 12,
+            background: "#fff",
+            touchAction: "none",
+          }}
           onPointerDown={onPlotPointerDown}
           onPointerMove={onPlotPointerMove}
           onPointerUp={onPlotPointerUp}
           onDoubleClick={resetZoom}
         >
-          {/* Quadrant background rectangles */}
-          {/* UL (blue) */}
+          {/* Quadrants */}
           <rect
             x={SM.left}
             y={SM.top}
@@ -673,7 +842,6 @@ export default function Research() {
             height={yScale((yExtent[0] + yExtent[1]) / 2) - SM.top}
             fill="rgba(0,123,255,0.12)"
           />
-          {/* UR (green) */}
           <rect
             x={midX_px}
             y={SM.top}
@@ -681,7 +849,6 @@ export default function Research() {
             height={midY_px - SM.top}
             fill="rgba(40,167,69,0.12)"
           />
-          {/* LL (red) */}
           <rect
             x={SM.left}
             y={midY_px}
@@ -689,7 +856,6 @@ export default function Research() {
             height={SM.top + S_innerH - midY_px}
             fill="rgba(220,53,69,0.12)"
           />
-          {/* LR (yellow) */}
           <rect
             x={midX_px}
             y={midY_px}
@@ -704,10 +870,10 @@ export default function Research() {
 
           {/* Midlines */}
           <line x1={midX_px} y1={SM.top} x2={midX_px} y2={SM.top + S_innerH} stroke="#aaa" strokeDasharray="4,4" />
-          <line x1={SM.left} y1={midY_px} x2={SM.left + S_innerW} y2={midY_px} stroke="#aaa" strokeDasharray="4,4" />
+          <line x1={SM.left} y1={midY_px} x2={SM.left + S_innerW} y2={SM.top + S_innerH} stroke="#aaa" strokeDasharray="4,4" />
 
           {/* X ticks */}
-          {ticks(xExtent[0], xExtent[1], smallScreen ? 4 : 6).map((t, i) => {
+          {ticks(0, 100, smallScreen ? 4 : 6).map((t, i) => {
             const x = xScale(t);
             return (
               <g key={`xt-${i}`}>
@@ -720,7 +886,7 @@ export default function Research() {
           })}
 
           {/* Y ticks */}
-          {ticks(yExtent[0], yExtent[1], smallScreen ? 4 : 6).map((t, i) => {
+          {ticks(0, 100, smallScreen ? 4 : 6).map((t, i) => {
             const y = yScale(t);
             return (
               <g key={`yt-${i}`}>
@@ -749,15 +915,7 @@ export default function Research() {
 
           {/* Regression line */}
           {regSegment && (
-            <line
-              x1={regSegment.x0}
-              y1={regSegment.y0}
-              x2={regSegment.x1}
-              y2={regSegment.y1}
-              stroke="#333"
-              strokeWidth="2"
-              opacity="0.7"
-            />
+            <line x1={regSegment.x0} y1={regSegment.y0} x2={regSegment.x1} y2={regSegment.y1} stroke="#333" strokeWidth="2" opacity="0.7" />
           )}
 
           {/* Points / Labels */}
@@ -765,7 +923,6 @@ export default function Research() {
             const px = xScale(d.x);
             const py = yScale(d.y);
 
-            // On small screens show dots with tooltips; on larger, show names
             if (smallScreen) {
               return (
                 <circle
@@ -774,18 +931,13 @@ export default function Research() {
                   cy={py}
                   r={4}
                   fill={burntOrange}
-                  onPointerEnter={() =>
-                    setTip({ x: px, y: py - 10, content: `${d.name} (${formatNum(d.x)}, ${formatNum(d.y)})` })
-                  }
+                  onPointerEnter={() => setTip({ x: px, y: py - 10, content: `${d.name} (${formatNum(d.x)}, ${formatNum(d.y)})` })}
                   onPointerLeave={() => setTip(null)}
-                  onPointerDown={() =>
-                    setTip({ x: px, y: py - 10, content: `${d.name} (${formatNum(d.x)}, ${formatNum(d.y)})` })
-                  }
+                  onPointerDown={() => setTip({ x: px, y: py - 10, content: `${d.name} (${formatNum(d.x)}, ${formatNum(d.y)})` })}
                 />
               );
             }
 
-            // Adjust label anchoring to avoid clipping at edges
             let anchor = "middle";
             if (px > S_WIDTH - 40) anchor = "end";
             else if (px < SM.left + 40) anchor = "start";
@@ -812,7 +964,7 @@ export default function Research() {
             <rect
               x={Math.min(box.x0, box.x1)}
               y={Math.min(box.y0, box.y1)}
-              width={Math.abs(box.x1 - box.x0)}
+              width={Math.abs(box.y1 - box.y0) ? Math.abs(box.x1 - box.x0) : 0}
               height={Math.abs(box.y1 - box.y0)}
               fill="rgba(191,87,0,0.12)"
               stroke={burntOrange}
@@ -847,7 +999,6 @@ export default function Research() {
           Sentiment Rankings:
         </div>
 
-        {/* Multi-select (kept but scrollable for mobile) */}
         <select
           multiple
           size={Math.min(8, Math.max(4, seriesKeys.length || 4))}
@@ -876,7 +1027,6 @@ export default function Research() {
             ))}
         </select>
 
-        {/* legend */}
         <div
           style={{
             display: "flex",
@@ -897,13 +1047,20 @@ export default function Research() {
       </div>
 
       {/* ==== TRENDS LINE CHART ==== */}
-      <div ref={trendsRef} style={{ width: "100%", maxWidth: "100%", display: "flex", justifyContent: "center", marginTop: 8 }}>
+      <div
+        ref={trendsRef}
+        style={{
+          width: "100%",
+          maxWidth: "100%",
+          display: "flex",
+          justifyContent: "center",
+          marginTop: 8,
+        }}
+      >
         <svg width={T_WIDTH} height={T_HEIGHT} style={{ border: "1px solid #eee", borderRadius: 12, background: "#fff" }}>
-          {/* axes */}
           <line x1={TM.left} y1={TM.top + T_innerH} x2={TM.left + T_innerW} y2={TM.top + T_innerH} stroke="#999" />
           <line x1={TM.left} y1={TM.top} x2={TM.left} y2={TM.top + T_innerH} stroke="#999" />
 
-          {/* Y ticks 0..100 */}
           {[0, 20, 40, 60, 80, 100].map((val, i) => {
             const y = tyScale(val);
             return (
@@ -916,7 +1073,6 @@ export default function Research() {
             );
           })}
 
-          {/* X time ticks */}
           {timeTicks.map((d, i) => {
             const x = tScale(d);
             return (
@@ -929,7 +1085,6 @@ export default function Research() {
             );
           })}
 
-          {/* labels */}
           <text x={TM.left + T_innerW / 2} y={T_HEIGHT - 8} textAnchor="middle" fontSize={12} fill="#333">
             {timeKey || "Time"}
           </text>
@@ -944,20 +1099,19 @@ export default function Research() {
             Sentiment Rank (0–100)
           </text>
 
-          {/* series lines */}
           {selectedSeries.map((k) => {
             const pts = trendsPointsBySeries[k] || [];
             const d = buildPath(pts);
             return <path key={`path-${k}`} d={d} fill="none" stroke={colorFor(k)} strokeWidth="2" opacity="0.9" />;
           })}
 
-          {/* hover/tap tooltips on line points (sparse sampling for perf) */}
           {selectedSeries.map((k) => {
             const pts = trendsPointsBySeries[k] || [];
-            const every = Math.ceil(pts.length / 60) || 1; // at most ~60 hotspots
+            const every = Math.ceil(pts.length / 60) || 1;
             return pts.map((p, i) => {
               if (i % every !== 0) return null;
-              const x = tScale(p.t), y = tyScale(p.y);
+              const x = tScale(p.t),
+                y = tyScale(p.y);
               const label = `${k}: ${p.y} • ${fmtMonth(p.t)}`;
               return (
                 <g key={`hot-${k}-${i}`}>
@@ -976,7 +1130,6 @@ export default function Research() {
             });
           })}
 
-          {/* Tooltip (shared) */}
           {tip && (
             <g transform={`translate(${clamp(tip.x, TM.left + 60, TM.left + T_innerW - 60)}, ${tip.y})`}>
               <rect x={-110} y={-28} width={220} height={24} rx={6} ry={6} fill="rgba(0,0,0,0.75)" />
@@ -988,7 +1141,7 @@ export default function Research() {
         </svg>
       </div>
 
-      {/* Disclosure text (kept beneath both charts) */}
+      {/* Disclosure */}
       <div style={{ textAlign: "center", marginTop: 10, padding: "0 8px" }}>
         <span style={{ color: burntOrange, fontSize: "clamp(10px, 2.6vw, 12px)" }}>
           Source: Sports-Reference.com, Google, and Card Ladder with data transformed by Longhorn Cards and
@@ -997,11 +1150,287 @@ export default function Research() {
         </span>
       </div>
 
-      {/* Empty states */}
       {(!points.length || !trendsRows.length) && (
         <div style={{ textAlign: "center", marginTop: 14, color: "#666" }}>
-          {!points.length && (rows.length ? "No numeric columns found to plot or empty selection." : "Loading composite data…")}
+          {!points.length &&
+            (rows.length ? "No numeric columns found to plot or empty selection." : "Loading composite data…")}
           {!trendsRows.length && <div>Loading Google Trends data…</div>}
+        </div>
+      )}
+
+      {/* ===== Modal: Search Player Ranks ===== */}
+      {showModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.4)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 12,
+            zIndex: 1000,
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowModal(false);
+          }}
+        >
+          <div
+            style={{
+              width: "min(760px, 96vw)",
+              background: "#fff",
+              borderRadius: 12,
+              boxShadow: "0 10px 24px rgba(0,0,0,0.2)",
+              padding: 16,
+              border: `2px solid ${burntOrange}`,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 8,
+                marginBottom: 8,
+              }}
+            >
+              <h2
+                style={{
+                  margin: 0,
+                  color: burntOrange,
+                  fontSize: "clamp(1.1rem, 3.2vw, 1.4rem)",
+                  fontWeight: 800,
+                }}
+              >
+                Search Player Ranks
+              </h2>
+              <button
+                onClick={() => setShowModal(false)}
+                aria-label="Close"
+                style={{
+                  border: "none",
+                  background: "transparent",
+                  fontSize: 22,
+                  cursor: "pointer",
+                  color: "#333",
+                  lineHeight: 1,
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Player dropdown */}
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                alignItems: "center",
+                flexWrap: "wrap",
+                marginBottom: 12,
+              }}
+            >
+              <label htmlFor="playerSelect" style={{ fontWeight: 700 }}>
+                Player:
+              </label>
+              <select
+                id="playerSelect"
+                value={selectedPlayer}
+                onChange={(e) => setSelectedPlayer(e.target.value)}
+                style={{
+                  minWidth: 260,
+                  maxWidth: 420,
+                  padding: "8px 10px",
+                  borderRadius: 8,
+                  border: "1px solid #bbb",
+                }}
+              >
+                <option value="">-- Choose a Player --</option>
+                {players.map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+              </select>
+
+              <span style={{ fontSize: 12, color: "#666" }}>
+                {nameKey ? `Source column: ${nameKey}` : "Player column not detected"}
+              </span>
+            </div>
+
+            {/* Column availability */}
+            <div style={{ fontSize: 12, color: "#666", marginBottom: 6 }}>
+              Missing fields will show as N/A.{" "}
+              <span style={{ color: "#333" }}>
+                {[
+                  ["Composite", compCol],
+                  ["Fundamental", fundCol],
+                  ["Technical", techCol],
+                  ["Sentiment", sentCol],
+                  ["Fundamental Change", fundChgCol],
+                  ["Rating", ratingCol],
+                ]
+                  .filter(([, v]) => !v)
+                  .map(([label]) => label)
+                  .join(", ") || "All required fields found."}
+              </span>
+            </div>
+
+            {/* Summary card */}
+            {selectedPlayer && playerSummary && (
+              <div
+                style={{
+                  border: "1px solid #eee",
+                  borderRadius: 12,
+                  padding: 12,
+                  background: "#fafafa",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 8,
+                    marginBottom: 8,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <div style={{ fontWeight: 800, fontSize: "1.05rem", color: "#222" }}>
+                    {selectedPlayer}
+                  </div>
+                  <div style={{ fontSize: 12, color: "#666" }}>
+                    {playerSummary.count > 1
+                      ? `Aggregated from ${playerSummary.count} rows (averages shown)`
+                      : `From 1 row`}
+                  </div>
+                </div>
+
+                {/* Metrics grid */}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+                    gap: 10,
+                  }}
+                >
+                  {/* Core 0..100 ranks */}
+                  {[
+                    ["Composite Rank", playerSummary.composite],
+                    ["Fundamental Rank", playerSummary.fundamental],
+                    ["Technical Rank", playerSummary.technical],
+                    ["Sentiment Rank", playerSummary.sentiment],
+                  ].map(([label, val]) => (
+                    <div
+                      key={label}
+                      style={{
+                        background: "#fff",
+                        border: "1px solid #e7e7e7",
+                        borderRadius: 10,
+                        padding: "10px 12px",
+                      }}
+                    >
+                      <div style={{ fontSize: 12, color: "#666", marginBottom: 4 }}>{label}</div>
+                      <div style={{ fontSize: 20, fontWeight: 800, color: burntOrange }}>
+                        {val == null || isNaN(val) ? "N/A" : formatNum(val)}
+                      </div>
+                      {val != null && !isNaN(val) && (
+                        <div
+                          aria-hidden
+                          style={{
+                            marginTop: 6,
+                            height: 6,
+                            background: "#eee",
+                            borderRadius: 999,
+                            overflow: "hidden",
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: `${clamp(val, 0, 100)}%`,
+                              height: "100%",
+                              background: burntOrange,
+                            }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+
+                  {/* Fundamental Change */}
+                  <div
+                    style={{
+                      background: "#fff",
+                      border: "1px solid #e7e7e7",
+                      borderRadius: 10,
+                      padding: "10px 12px",
+                    }}
+                  >
+                    <div style={{ fontSize: 12, color: "#666", marginBottom: 4 }}>Fundamental Change</div>
+                    <div
+                      style={{
+                        fontSize: 20,
+                        fontWeight: 800,
+                        color:
+                          (playerSummary.fundChange ?? 0) >= 0 ? "#198754" : "#dc3545",
+                      }}
+                    >
+                      {playerSummary.fundChange == null || isNaN(playerSummary.fundChange)
+                        ? "N/A"
+                        : `${playerSummary.fundChange >= 0 ? "+" : ""}${formatNum(playerSummary.fundChange)}`}
+                    </div>
+                  </div>
+
+                  {/* Rating (separate card placed right after Fundamental Change) */}
+                  <div
+                    style={{
+                      background: "#fff",
+                      border: "1px solid #e7e7e7",
+                      borderRadius: 10,
+                      padding: "10px 12px",
+                    }}
+                  >
+                    <div style={{ fontSize: 12, color: "#666", marginBottom: 4 }}>Rating</div>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 8,
+                        minHeight: 28,
+                      }}
+                    >
+                      <div
+                        style={{
+                          padding: "2px 10px",
+                          borderRadius: 999,
+                          fontWeight: 800,
+                          fontSize: 12,
+                          color: playerSummary.rating === "Buy" ? "#fff" : "#333",
+                          background: playerSummary.rating === "Buy" ? "#198754" : "#e9ecef",
+                          border: `1px solid ${
+                            playerSummary.rating === "Buy" ? "#198754" : "#ced4da"
+                          }`,
+                          minWidth: 64,
+                          textAlign: "center",
+                        }}
+                      >
+                        {playerSummary.rating ?? "N/A"}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {!selectedPlayer && (
+              <div style={{ color: "#666", fontSize: 13, marginTop: 8 }}>
+                Choose a player to view Composite, Fundamental, Technical, Sentiment, Fundamental Change, and Rating.
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
