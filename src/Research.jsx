@@ -870,7 +870,7 @@ export default function Research() {
 
           {/* Midlines */}
           <line x1={midX_px} y1={SM.top} x2={midX_px} y2={SM.top + S_innerH} stroke="#aaa" strokeDasharray="4,4" />
-          <line x1={SM.left} y1={midY_px} x2={SM.left + S_innerW} y2={SM.top + S_innerH} stroke="#aaa" strokeDasharray="4,4" />
+          {/* Removed the diagonal dashed line that previously ran across the lower-left quadrant */}
 
           {/* X ticks */}
           {ticks(0, 100, smallScreen ? 4 : 6).map((t, i) => {

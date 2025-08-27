@@ -197,7 +197,9 @@ export default function HomePage() {
         scoreKeyAliases: headerAliases.composite,
       });
     })();
-    return () => { cancel = true; };
+    return () => {
+      cancel = true;
+    };
   }, [openComposite, headerAliases]);
 
   useEffect(() => {
@@ -211,7 +213,9 @@ export default function HomePage() {
         scoreKeyAliases: headerAliases.fundamental,
       });
     })();
-    return () => { cancel = true; };
+    return () => {
+      cancel = true;
+    };
   }, [openFund, headerAliases]);
 
   useEffect(() => {
@@ -225,7 +229,9 @@ export default function HomePage() {
         scoreKeyAliases: headerAliases.sentiment,
       });
     })();
-    return () => { cancel = true; };
+    return () => {
+      cancel = true;
+    };
   }, [openSent, headerAliases]);
 
   useEffect(() => {
@@ -239,7 +245,9 @@ export default function HomePage() {
         scoreKeyAliases: headerAliases.technical,
       });
     })();
-    return () => { cancel = true; };
+    return () => {
+      cancel = true;
+    };
   }, [openTech, headerAliases]);
 
   // Close on ESC for all dialogs
@@ -339,6 +347,19 @@ export default function HomePage() {
           }}
         >
           Research
+        </Link>
+
+        {/* ✅ New Blog link (placed next to Research) */}
+        <Link
+          to="/blog"
+          style={{
+            textDecoration: "none",
+            color: burntOrange,
+            fontWeight: "bold",
+            fontSize: "1.1rem",
+          }}
+        >
+          Blog
         </Link>
       </nav>
 
@@ -626,9 +647,7 @@ export default function HomePage() {
             View Top 25 by Technical Rank
           </button>
         </div>
-        <div style={{ fontSize: "0.85rem", marginTop: "8px", color: "#666" }}>
-          
-        </div>
+        <div style={{ fontSize: "0.85rem", marginTop: "8px", color: "#666" }}></div>
       </div>
 
       {/* About Us Section */}
