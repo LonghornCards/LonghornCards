@@ -209,7 +209,134 @@ export default function Blog() {
         <h1 style={{ color: "#BF5700" }}>Longhorn Cards and Collectibles Blog</h1>
       </header>
 
-      {/* Blog Entry 1 */}
+{/* Blog Entry 1 */}
+      <article style={entryStyle}>
+        <h2 style={{ color: "#BF5700" }}>Scatterplot Overview</h2>
+        <p>
+          The Longhorn Cards and Collectibles proprietary scatterplot allows for the analysis of player Composite Rankings, 
+          Fundamental Rankings, Technical Rankings, and Sentiment Rankings.
+        </p>
+        <p>
+          The plot area is color coded to better understand quadrants that include players with the strongest rankings, with green, blue,
+          yellow, and red coloring.
+        </p>
+        <p>
+          The key to understanding how to read the scatterplot is to know that higher ranking players, on average, should lead to 
+          stronger and more consistent card prices over time.
+        </p>
+        <p>
+            For example, players in the green shaded area exhibit the highest current rankings, and many of these players are future
+            hall-of-fame contenders with strong historical career statistics and are well known to the broad public.
+        </p>
+        <p>
+            The scatterplot can be used to both evaluate current cards to purchase as well as which ones to avoid until their underlying
+            rankings improve and offer more of a balance between risk and reward.
+        </p>
+        <img
+          src="/Scatterplot.png"
+          alt="Scatterplot of Rankings"
+          style={imgStyle}
+          onClick={() => openImage("/Scatterplot.png")}
+        />
+        <div style={actionsRow}>
+          <button style={openBtn} onClick={() => openPdf("/Scatterplot.pdf")}>
+            View PDF
+          </button>
+          <a style={linkBtn} href="/Scatterplot.pdf" download>
+            Download PDF
+          </a>
+          <a style={linkBtn} href="/Scatterplot.png" download>
+            Download Image
+          </a>
+        </div>
+      </article>
+
+      {/* Blog Entry 2 */}
+      <article style={entryStyle}>
+        <h2 style={{ color: "#BF5700" }}>Sentiment Rankings</h2>
+        <p>
+          Sentiment Rankings are based on Google Trends data, and the rankings provide a sense of how relevant and popular 
+          the respective players are versus other players.
+        </p>
+        <p>
+          On average, players that are more popular will garner a larger fanbase, and that fanbase is more likely to purchase 
+          that player's sports cards as opposed to a player that is relatively unknown or even disliked.
+        </p>
+        <p>
+          This measure of sentiment can be a critical factor as it makes the market for that player much larger, and should lead 
+          to stronger and more stable prices over time with a higher level of market liquidity.
+        </p>
+        <p>
+            In this example, you can see how LeBron James has held a very high and consistent sentiment ranking, whereas Tyler Herro 
+            and Victor Wembanyama have been more volatile since they are younger players.  Furthermore, "Shoeless" Joe Jackson has a 
+            relatively low sentiment ranking primarily because he's been deceased a long time and doesn't garner as much attention.
+        </p>
+        <p>
+            Sentiment rankings are a critical part of our proprietary Composite Ranking in order to gauge the potential market for that 
+            player as well as the future price potential for their cards over the longer term.
+        </p>
+        <img
+          src="/Sentiment.png"
+          alt="Sentiment Rankings"
+          style={imgStyle}
+          onClick={() => openImage("/Sentiment.png")}
+        />
+        <div style={actionsRow}>
+          <button style={openBtn} onClick={() => openPdf("/Sentiment.pdf")}>
+            View PDF
+          </button>
+          <a style={linkBtn} href="/Sentiment.pdf" download>
+            Download PDF
+          </a>
+          <a style={linkBtn} href="/Sentiment.png" download>
+            Download Image
+          </a>
+        </div>
+      </article>
+
+{/* Blog Entry 3 */}
+      <article style={entryStyle}>
+        <h2 style={{ color: "#BF5700" }}>Understanding Rankings</h2>
+        <p>
+          Longhorn Cards and Collectibles calculates a number of different rankings that help determine the overall strength and 
+          quality of a sports player for determining potential card price appreciation over the longer term.
+        </p>
+        <p>
+          The Composite Rank is a combination of Technical Rank (based on historical card pricess), Sentiment Rank (based on Google Trends), 
+          and Fundamental Rank (based on player career statistics).
+        </p>
+        <p>
+          The combination of these different rankings, in combination with changes to a players fundamentals (statistics), helps to 
+          determine if that card should be purchased.
+        </p>
+        <p>
+            In addition, Fundamental Change is an important variable that compares the player's most recent season versus their historical 
+            average season to determine if they are outperforming, which should lead to robust card price returns.
+        </p>
+        <p>
+            Overall, the rankings provide a quantiative way to evaulate players based on numerous criteria in order to determine if they 
+            are suitable for your collection.
+        </p>
+        <img
+          src="/Rankings.png"
+          alt="Rankings Overview"
+          style={imgStyle}
+          onClick={() => openImage("/Rankings.png")}
+        />
+        <div style={actionsRow}>
+          <button style={openBtn} onClick={() => openPdf("/Rankings.pdf")}>
+            View PDF
+          </button>
+          <a style={linkBtn} href="/Rankings.pdf" download>
+            Download PDF
+          </a>
+          <a style={linkBtn} href="/Rankings.png" download>
+            Download Image
+          </a>
+        </div>
+      </article>
+
+{/* Blog Entry 4 */}
       <article style={entryStyle}>
         <h2 style={{ color: "#BF5700" }}>Card Ladder Indexes</h2>
         <p>
@@ -242,7 +369,7 @@ export default function Blog() {
         </div>
       </article>
 
-      {/* Blog Entry 2 */}
+      {/* Blog Entry 5 */}
       <article style={entryStyle}>
         <h2 style={{ color: "#BF5700" }}>Babe Ruth Card Prices</h2>
         <p>
@@ -271,7 +398,7 @@ export default function Blog() {
         </div>
       </article>
 
-      {/* Blog Entry 3 */}
+      {/* Blog Entry 6 */}
       <article style={entryStyle}>
         <h2 style={{ color: "#BF5700" }}>Geno Smith Card Prices</h2>
         <p>
@@ -306,7 +433,7 @@ export default function Blog() {
         </div>
       </article>
 
-      {/* Blog Entry 4 */}
+      {/* Blog Entry 7 */}
       <article style={entryStyle}>
         <h2 style={{ color: "#BF5700" }}>History of Sports Trading Cards</h2>
         <p>
