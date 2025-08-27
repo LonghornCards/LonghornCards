@@ -503,6 +503,46 @@ export default function Blog() {
         </div>
       </article>
 
+{/* Blog Entry 9 */}
+      <article style={entryStyle}>
+        <h2 style={{ color: "#BF5700" }}>"Shoeless" Joe Jackson Card Prices</h2>
+        <p>
+          Over the past year, card prices for "Shoeless" Joe Jackson have soared 42% versus 13% for the Card Ladder Vintage Index.
+         </p>
+         <p> 
+          Furthermore, "Shoeless" Joe Jackson's card prices have increased over 300% since Card Ladder began tracking data in 2008.
+        </p>
+        <p>
+          In looking at the price history, it's been almost a straight line up with incredible momentum to the upside.
+         </p>
+         <p>
+            For collectors, this type of price action is exactly what you want to see and it represents a rare opportunity for long-term appreciation.
+         </p>
+         <p>
+            Longhorn Cards and Collectibles has above-average rankings for "Shoeless" Joe Jackson in terms of overall Composite Rank, Fundamental Rank, and Technical Rank.
+         </p>
+         <p>
+            However, Sentiment Rank is in the bottom quartile compared to other players, and overall we rate the cards as a Hold for the meantime.
+         </p>
+         <img
+          src="/Shoeless.png"
+          alt="Shoeless Joe Jackson"
+          style={imgStyle}
+          onClick={() => openImage("/Shoeless.png")}
+        />
+        <div style={actionsRow}>
+          <button style={openBtn} onClick={() => openPdf("/Shoeless.pdf")}>
+            View PDF
+          </button>
+          <a style={linkBtn} href="/Shoeless.pdf" download>
+            Download PDF
+          </a>
+          <a style={linkBtn} href="/Shoeless.png" download>
+            Download Image
+          </a>
+        </div>
+      </article>
+
       {/* Back to Home */}
       <div style={{ textAlign: "center", marginTop: "30px" }}>
         <Link to="/" style={{ color: "#BF5700", fontWeight: "bold" }}>
