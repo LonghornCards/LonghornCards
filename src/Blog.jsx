@@ -542,6 +542,97 @@ export default function Blog() {
           </a>
         </div>
       </article>
+
+      {/* Blog Entry 10 */}
+      <article style={entryStyle}>
+        <h2 style={{ color: "#BF5700" }}>Sports Card Grading Companies</h2>
+        <p>
+          This is a list of sports card grading companies with their respective non-bulk minimum prices, estimated turnaround time, and maximum 
+          insured values.
+         </p>
+         <p> 
+          Per ChatGPT, top-tier grading companies are PSA, BGS, SGC, and CGC.
+        </p>
+        <p>
+          Mid-tier grading companies are HGA, TAG, ISA, GMA, and MNT.
+         </p>
+         <p>
+            Finally, low-tier grading companies include RCG, FCG, PGI, WCG, and the others listed and not listed.
+         </p>
+         <p>
+            Despite the higher price, PSA has been shown to provide the highest value for their graded cards versus all other grading companies.
+         </p>
+         <p>
+            However, there are exceptions of course because BGS, SGC, and CGC are top-tier companies similar to PSA.
+         </p>
+         <img
+          src="/GradingCompaniesFinal.png"
+          alt="Grading Companies Final"
+          style={imgStyle}
+          onClick={() => openImage("/GradingCompaniesFinal.png")}
+        />
+        <div style={actionsRow}>
+          <button style={openBtn} onClick={() => openPdf("/GradingCompaniesFinal.pdf")}>
+            View PDF
+          </button>
+          <a style={linkBtn} href="/GradingCompaniesFinal.pdf" download>
+            Download PDF
+          </a>
+          <a style={linkBtn} href="/GradingCompaniesFinal.png" download>
+            Download Image
+          </a>
+        </div>
+      </article>
+
+      {/* Blog Entry 11 */}
+      <article style={entryStyle}>
+        <h2 style={{ color: "#BF5700" }}>Top Sports Card Grading Companies</h2>
+        <p>
+          PSA, BGS, SGC, and CGC are the top-tier sports card grading companies according to ChatGPT and other online sources.
+         </p>
+         <p> 
+          This overview provides a summary for each company, detailed pricing, turnaround time information, and details about their process.
+        </p>
+        <p>
+          Based on non-bulk pricing, currently BGS and SGC are tied for the cheapest minimum price per card, while SGC offers the most attractive turnaround time at base pricing.
+         </p>
+         <p>
+            Each grading company provides a different value proposition as well as different encapsulations (slabs) that may be appealing to different people.
+         </p>
+         <p>
+            PSA assigns grades based on different qualifiers using a process that is mostly objective, and their branded LightHouse 
+            Label provides full information including the grade and card details. 
+         </p>
+         <p>
+            BGS is especially renowned for grading newer cards, and assigns grades based on four subgrades:  centering, corners, edges, and surface.
+            They are known for their classy encapsulation design called the BGS Case Diagram.
+         </p>
+         <p>
+          SGC has build a reputation for its focus on older, vintage cards - especially historic baseball trading cards and memorabilia.  They are known 
+          for their straight-forward grading scale and fast turnaround times, with a distinctive tuxedo-like black matting within their encapsulation.
+         </p>
+         <p>
+          CGC is a newer entrant to sports card grading and they are leveraging their expertise from grading comic books.  They employ a team effort 
+          with advanced technology, and they stand out for their state-of-the-art encapsulation design.
+         </p>
+         <img
+          src="/TopGradingCompaniesFinal.png"
+          alt="Top Grading Companies Final"
+          style={imgStyle}
+          onClick={() => openImage("/TopGradingCompaniesFinal.png")}
+        />
+        <div style={actionsRow}>
+          <button style={openBtn} onClick={() => openPdf("/TopGradingCompaniesFinal.pdf")}>
+            View PDF
+          </button>
+          <a style={linkBtn} href="/TopGradingCompaniesFinal.pdf" download>
+            Download PDF
+          </a>
+          <a style={linkBtn} href="/TopGradingCompaniesFinal.png" download>
+            Download Image
+          </a>
+        </div>
+      </article>
       
       {/* Back to Home */}
       <div style={{ textAlign: "center", marginTop: "30px" }}>
