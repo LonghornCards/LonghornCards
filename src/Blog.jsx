@@ -306,6 +306,45 @@ export default function Blog() {
         </div>
       </article>
 
+      {/* Blog Entry 4 */}
+      <article style={entryStyle}>
+        <h2 style={{ color: "#BF5700" }}>History of Sports Trading Cards</h2>
+        <p>
+          Sports Trading Cards have a long and illustrious history that spans nearly two centuries. 
+         </p>
+         <p> 
+          The global sports trading cards market size was valued at $14.9 billion in 2024 and is projected to reach $52.1 billion by 2034, 
+          growing at a CAGR of 13% from 2024 to 2034.
+        </p>
+        <p>
+          Trading cards overall are still reboundinng from the massive increase in popularity during the pandemic. 
+         </p>
+         <p> 
+          Since their humble beginning, sports cards have evolved from simple advertising tools to multi-million-dollar investments, 
+          but the present-day oversupply of “rare” cards due to artificial scarcity increases risks of entering a new “junk wax era”.
+        </p>
+        <p>
+          Download and read the full History of Sports Trading Cards to dive deeper into the Hobby.
+        </p>
+        <img
+          src="/History_of_Trading_Cards.png"
+          alt="History of Trading Cards"
+          style={imgStyle}
+          onClick={() => openImage("/History_of_Trading_Cards.png")}
+        />
+        <div style={actionsRow}>
+          <button style={openBtn} onClick={() => openPdf("/History_Of_Trading_Cards.pdf")}>
+            View PDF
+          </button>
+          <a style={linkBtn} href="/History_Of_Trading_Cards.pdf" download>
+            Download PDF
+          </a>
+          <a style={linkBtn} href="/History_of_Trading_Cards.png" download>
+            Download Image
+          </a>
+        </div>
+      </article>
+
       {/* Back to Home */}
       <div style={{ textAlign: "center", marginTop: "30px" }}>
         <Link to="/" style={{ color: "#BF5700", fontWeight: "bold" }}>
