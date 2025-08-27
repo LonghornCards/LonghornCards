@@ -507,7 +507,7 @@ export default function Blog() {
       <article style={entryStyle}>
         <h2 style={{ color: "#BF5700" }}>"Shoeless" Joe Jackson Card Prices</h2>
         <p>
-          Over the past year, card prices for "Shoeless" Joe Jackson have soared 42% versus 13% for the Card Ladder Vintage Index.
+          Over the past year, card prices for "Shoeless" Joe Jackson have soared 42% versus 18% for the Card Ladder Pre-War Vintage Index - which tracks cards released 1945 and earlier.
          </p>
          <p> 
           Furthermore, "Shoeless" Joe Jackson's card prices have increased over 300% since Card Ladder began tracking data in 2008.
@@ -542,7 +542,7 @@ export default function Blog() {
           </a>
         </div>
       </article>
-
+      
       {/* Back to Home */}
       <div style={{ textAlign: "center", marginTop: "30px" }}>
         <Link to="/" style={{ color: "#BF5700", fontWeight: "bold" }}>
