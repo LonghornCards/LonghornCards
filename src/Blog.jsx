@@ -752,6 +752,56 @@ export default function Blog() {
         </div>
       </article>
 
+      {/* Blog Entry 15 */}
+      <article style={entryStyle}>
+        <h2 style={{ color: "#BF5700" }}>Card Daily Volume & Monthly Sales Count (August 2025)</h2>
+        <p>
+          Per Card Ladder, card daily volume represents the total amount of money spent on cards tracked in their sales history 
+          database each day.  
+         </p>
+         <p> 
+          Monthly sales count is the total number of transactions tracked in Card Ladder's sales history database each month.
+        </p>
+        <p>
+          In analyzing the chart patterns, it's clear there was a massive bubble during the pandemic, which resulted in a 
+          temporary surge in daily volume and an increase in the monthly sales count.
+         </p>
+         <p>
+          However, the recent data shows that since the end of the pandemic, both daily volume and monthly sales count have increased 
+          well above the levels prior to the pandemic.
+         </p>
+         <p>
+          This structural change in the marketplace has significant implications for market liquidity and overall transaction dynamics.
+         </p>
+         <p>
+          In particular, the monthly sales count has almost gone parabolic - reflecting soaring transactions post the pandemic.
+         </p>
+         <p>
+          Likewise, daily volume has continued to bubble higher and higher towards the levels experienced during the pandemic.
+         </p>
+         <p>
+          The key takeaway from this data is that the sports card market has undergone a structural change towards higher volume and 
+          more transactions than prior to the pandemic, which should improve overall market efficiency.
+         </p>
+         <img
+          src="/VolumeSales.png"
+          alt="Volume and Sales"
+          style={imgStyle}
+          onClick={() => openImage("/VolumeSales.png")}
+        />
+        <div style={actionsRow}>
+          <button style={openBtn} onClick={() => openPdf("/VolumeSales.pdf")}>
+            View PDF
+          </button>
+          <a style={linkBtn} href="/VolumeSales.pdf" download>
+            Download PDF
+          </a>
+          <a style={linkBtn} href="/VolumeSales.png" download>
+            Download Image
+          </a>
+        </div>
+      </article>
+
       {/* Back to Home */}
       <div style={{ textAlign: "center", marginTop: "30px" }}>
         <Link to="/" style={{ color: "#BF5700", fontWeight: "bold" }}>
