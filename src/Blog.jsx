@@ -634,6 +634,84 @@ export default function Blog() {
         </div>
       </article>
       
+      {/* Blog Entry 12 */}
+      <article style={entryStyle}>
+        <h2 style={{ color: "#BF5700" }}>Most Expensive Card Sales of All-Time (August 2025)</h2>
+        <p>
+          According to Cllct, the nearly $13M purchase of the 2007-08 Upper Deck Exquisite Collection Michael Jordan and Kobe Bryant Dual Logoman set a new 
+          all-time high record for card sales, surpassing the $12.6M previous record for the 1952 Topps Mickey Mantle SGC 9.5.
+         </p>
+         <p> 
+          This $13M purchase also surpassed the previous record for a basketball card, which was $5.2M for the Exquisite Collection LeBron 
+          James Gold Rookie Patch Autograph /23.
+        </p>
+        <p>
+          The new owners of the most expensive card are Kevin O'Leary (aka Mr. Wonderful) and his business partners Matt Allen and Paul Warshaw.
+         </p>
+         <img
+          src="/AllTimeSales.png"
+          alt="All Time Sales"
+          style={imgStyle}
+          onClick={() => openImage("/AllTimeSales.png")}
+        />
+        <div style={actionsRow}>
+          <button style={openBtn} onClick={() => openPdf("/AllTimeSales.pdf")}>
+            View PDF
+          </button>
+          <a style={linkBtn} href="/AllTimeSales.pdf" download>
+            Download PDF
+          </a>
+          <a style={linkBtn} href="/AllTimeSales.png" download>
+            Download Image
+          </a>
+        </div>
+      </article>
+
+      {/* Blog Entry 13 */}
+      <article style={entryStyle}>
+        <h2 style={{ color: "#BF5700" }}>Warren Buffett Autographed 1999 Shareholder Meeting Pass (August 2025)</h2>
+        <p>
+          This Berkshire Hathaway 1999 Annual Meeting pass is autographed by Warren Buffett and comes with a Letter  of Authenticity.  
+          Please visit my eBay store to make an offer.  
+         </p>
+         <p> 
+          This meeting occurred right in the middle of the Dot-com bubble, and Warren Buffett and Charlie Munger spent much of the meeting defending 
+          their decision not to invest in internet/technology companies.
+        </p>
+        <p>
+          Per ChatGPT, during the meeting many shareholders pressed them on why Berkshire Hathaway was avoiding the "new economy".
+         </p>
+         <p>
+          Warren Buffett reiterated his philosphy of only invesing in businesses he understood, while emphasizing durable 
+          competitive advantages, predictable cash flows, and reasonable valuations - all of which most technology companies during 
+          that time lacked as they did not have proven business models.
+         </p>
+         <p>
+          During the meeting, Warren Buffett acknowledged all the excitement around the internet but warned about "speculative fever".
+         </p>
+         <p>
+          A quote from Warren Buffett at a different time best reflects the sentiment of this meeting:  "Buy into a company because 
+          you want to own it, not because you want the stock to go up."
+         </p>
+         <img
+          src="/Buffett.png"
+          alt="Buffett"
+          style={imgStyle}
+          onClick={() => openImage("/Buffett.png")}
+        />
+        <div style={actionsRow}>
+          <button style={openBtn} onClick={() => openPdf("/Buffett.pdf")}>
+            View PDF
+          </button>
+          <a style={linkBtn} href="/Buffett.pdf" download>
+            Download PDF
+          </a>
+          <a style={linkBtn} href="/Buffett.png" download>
+            Download Image
+          </a>
+        </div>
+      </article>
+
       {/* Back to Home */}
       <div style={{ textAlign: "center", marginTop: "30px" }}>
         <Link to="/" style={{ color: "#BF5700", fontWeight: "bold" }}>
