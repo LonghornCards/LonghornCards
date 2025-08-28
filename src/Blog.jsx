@@ -712,6 +712,46 @@ export default function Blog() {
         </div>
       </article>
 
+      {/* Blog Entry 14 */}
+      <article style={entryStyle}>
+        <h2 style={{ color: "#BF5700" }}>Drew Brees Card Prices (August 2025)</h2>
+        <p>
+          The 2001 Bowman's Best Drew Brees Certified Autograph PSA 9 Rookie Card is available for sale in my eBay store.  
+         </p>
+         <p> 
+          Longhorn Cards and Collectibles' proprietary rankings show Drew Brees finished his career near the top decile in terms 
+          of Fundamental Rank.
+        </p>
+        <p>
+          Overall, Brees has a Composite Rank of 60, Fundamental Rank of 89, Technical Rank of 60, and Sentiment Rank of 33 - which 
+          equates to a Hold rating according to Longhorn Cards and Collectibles.
+         </p>
+         <p>
+          According to Card Ladder, since 2004 Brees' card prices have soard 10,311% and over the past year prices are up nearly 9%.
+         </p>
+         <p>
+          Recently, Drew Brees' card prices have turned higher post the Covid bubble and subsequent bear market, which puts his cards 
+          in excellent shape to move higher over the longer term.
+         </p>
+         <img
+          src="/Brees.png"
+          alt="Drew Brees"
+          style={imgStyle}
+          onClick={() => openImage("/Brees.png")}
+        />
+        <div style={actionsRow}>
+          <button style={openBtn} onClick={() => openPdf("/Brees.pdf")}>
+            View PDF
+          </button>
+          <a style={linkBtn} href="/Brees.pdf" download>
+            Download PDF
+          </a>
+          <a style={linkBtn} href="/Brees.png" download>
+            Download Image
+          </a>
+        </div>
+      </article>
+
       {/* Back to Home */}
       <div style={{ textAlign: "center", marginTop: "30px" }}>
         <Link to="/" style={{ color: "#BF5700", fontWeight: "bold" }}>
