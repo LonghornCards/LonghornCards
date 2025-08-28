@@ -89,10 +89,12 @@ export default function Research() {
   // -------- Scatterplot state --------
   const [rows, setRows] = useState([]);
   const [sport, setSport] = useState("All");
+  const [status, setStatus] = useState("All"); // NEW: Status filter
   const [xKey, setXKey] = useState(null);
   const [yKey, setYKey] = useState(null);
   const [nameKey, setNameKey] = useState(null);
   const [sportKey, setSportKey] = useState(null);
+  const [statusKey, setStatusKey] = useState(null); // NEW: Status column key
   const [numericCols, setNumericCols] = useState([]);
 
   // Columns for modal summary (found robustly)
@@ -150,6 +152,14 @@ export default function Research() {
 
         const guessedName = findCol(["Player", "Name", "PLAYER", "NAME"]);
         const guessedSport = findCol(["Sport", "SPORT", "League", "LEAGUE"]);
+        const guessedStatus = findCol([
+          "Status",
+          "PLAYER STATUS",
+          "Career Status",
+          "Active/Retired",
+          "PlayerStatus",
+          "STATUS",
+        ]); // NEW: detect status column
 
         // Robust metric columns (modal & general use)
         const compositeCol = findCol([
@@ -189,6 +199,8 @@ export default function Research() {
           "FundChange",
           "FUNDAMENTAL CHANGE",
         ]);
+
+        // IMPORTANT: do NOT confuse "Status" (Active/Retired) with "Rating"
         const ratingDetectedCol = findCol([
           "Rating",
           "RATING",
@@ -196,15 +208,15 @@ export default function Research() {
           "Recommendation",
           "Reco",
           "Buy/Hold",
-          "Status",
         ]);
 
         // Detect numeric columns (for scatter X/Y dropdowns)
         const isNum = (c) => json.some((r) => r[c] !== null && r[c] !== "" && !isNaN(Number(r[c])));
         let numCols = cols.filter(isNum);
 
-        // Exclude sport column if it happens to be numeric-coded
+        // Exclude sport/status columns if they look numeric-coded
         if (guessedSport) numCols = numCols.filter((c) => c !== guessedSport);
+        if (guessedStatus) numCols = numCols.filter((c) => c !== guessedStatus);
 
         // Exclude specific fields from X/Y dropdowns
         const excludedLC = new Set(
@@ -247,6 +259,7 @@ export default function Research() {
         setRows(json);
         setNameKey(guessedName);
         setSportKey(guessedSport);
+        setStatusKey(guessedStatus); // NEW
         setNumericCols(numCols);
         setXKey(x);
         setYKey(y);
@@ -371,7 +384,7 @@ export default function Research() {
         if (t === "buy" || t === "b") return "Buy";
         if (t === "hold" || t === "h") return "Hold";
         return s; // fall back to whatever is in file
-      };
+        };
       const normalized = vals.map(norm);
 
       // frequency count
@@ -404,15 +417,58 @@ export default function Research() {
   // ===== Scatterplot computations =====
   const filtered = useMemo(() => {
     if (!rows.length) return [];
-    if (!sportKey || sport === "All") return rows;
-    return rows.filter((r) => {
-      const v = (r[sportKey] ?? "").toString().toLowerCase();
-      if (sport === "Baseball") return v.includes("baseball") || v.includes("mlb");
-      if (sport === "Basketball") return v.includes("basketball") || v.includes("nba");
-      if (sport === "Football") return v.includes("football") || v.includes("nfl");
-      return true;
-    });
-  }, [rows, sport, sportKey]);
+
+    // 1) Sport filter
+    let out = rows;
+    if (sportKey && sport !== "All") {
+      out = out.filter((r) => {
+        const v = (r[sportKey] ?? "").toString().toLowerCase();
+        if (sport === "Baseball") return v.includes("baseball") || v.includes("mlb");
+        if (sport === "Basketball") return v.includes("basketball") || v.includes("nba");
+        if (sport === "Football") return v.includes("football") || v.includes("nfl");
+        return true;
+      });
+    }
+
+    // 2) Status filter (NEW)
+    if (statusKey && status !== "All") {
+      const pick = status.toLowerCase(); // "active" or "retired"
+      out = out.filter((r) => {
+        const raw = (r[statusKey] ?? "").toString().toLowerCase();
+
+        // common positive signals
+        const isActive =
+          raw.includes("active") ||
+          raw.includes("current") ||
+          raw.includes("playing") ||
+          raw.includes("rookie") ||
+          raw.includes("prospect");
+
+        const isRetired =
+          raw.includes("retired") ||
+          raw.includes("former") ||
+          raw.includes("hall") || // "Hall of Fame", "HOF"
+          raw.includes("hof") ||
+          raw.includes("inactive");
+
+        if (pick === "active") {
+          // If the column is noisy/mixed, prefer explicit "active" signals
+          if (isActive) return true;
+          if (isRetired) return false;
+          // fallback heuristic: if no signals, keep the row (avoid over-filtering)
+          return false;
+        }
+        if (pick === "retired") {
+          if (isRetired) return true;
+          if (isActive) return false;
+          return false;
+        }
+        return true;
+      });
+    }
+
+    return out;
+  }, [rows, sport, sportKey, status, statusKey]);
 
   const points = useMemo(() => {
     if (!xKey || !yKey) return [];
@@ -746,6 +802,39 @@ export default function Research() {
           ))}
         </div>
 
+        {/* Status toggle (NEW) */}
+        <div
+          style={{
+            display: "flex",
+            gap: 8,
+            flexWrap: "wrap",
+            justifyContent: "center",
+            alignItems: "center",
+            opacity: statusKey ? 1 : 0.5,
+          }}
+          title={statusKey ? "Filter by Active/Retired" : "Status column not found in the data"}
+        >
+          {["All", "Active", "Retired"].map((s) => (
+            <button
+              key={`status-${s}`}
+              onClick={() => statusKey && setStatus(s)}
+              disabled={!statusKey}
+              style={{
+                padding: "6px 12px",
+                borderRadius: 999,
+                border: `2px solid ${burntOrange}`,
+                background: status === s ? burntOrange : "#fff",
+                color: status === s ? "#fff" : burntOrange,
+                fontWeight: 700,
+                cursor: statusKey ? "pointer" : "not-allowed",
+                fontSize: "0.9rem",
+              }}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+
         {/* X / Y dropdowns */}
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <label style={{ fontSize: 13 }}>X:</label>
@@ -870,7 +959,6 @@ export default function Research() {
 
           {/* Midlines */}
           <line x1={midX_px} y1={SM.top} x2={midX_px} y2={SM.top + S_innerH} stroke="#aaa" strokeDasharray="4,4" />
-          {/* Removed the diagonal dashed line that previously ran across the lower-left quadrant */}
 
           {/* X ticks */}
           {ticks(0, 100, smallScreen ? 4 : 6).map((t, i) => {
@@ -1373,17 +1461,18 @@ export default function Research() {
                       style={{
                         fontSize: 20,
                         fontWeight: 800,
-                        color:
-                          (playerSummary.fundChange ?? 0) >= 0 ? "#198754" : "#dc3545",
+                        color: (playerSummary.fundChange ?? 0) >= 0 ? "#198754" : "#dc3545",
                       }}
                     >
                       {playerSummary.fundChange == null || isNaN(playerSummary.fundChange)
                         ? "N/A"
-                        : `${playerSummary.fundChange >= 0 ? "+" : ""}${formatNum(playerSummary.fundChange)}`}
+                        : `${playerSummary.fundChange >= 0 ? "+" : ""}${formatNum(
+                            playerSummary.fundChange
+                          )}`}
                     </div>
                   </div>
 
-                  {/* Rating (separate card placed right after Fundamental Change) */}
+                  {/* Rating */}
                   <div
                     style={{
                       background: "#fff",
