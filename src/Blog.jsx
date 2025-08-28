@@ -802,6 +802,78 @@ export default function Blog() {
         </div>
       </article>
 
+      {/* Blog Entry 16 */}
+      <article style={entryStyle}>
+        <h2 style={{ color: "#BF5700" }}>Shai Gilgeous-Alexander Card Prices (August 2025)</h2>
+        <p>
+          This 2022 Donruss Optic #44 Shai Gilgeous-Alexander /24 (Choice Blue Mojo) (PSA 10) is available for purchase in my eBay store.  
+         </p>
+         <p> 
+          Shai Gilgeous-Alexander (SGA) is obviously a superior talent having won NBA and Finals MVP during the 2024-25 season, as well as a championship ring.
+        </p>
+        <p>
+          According to Card Ladder, his card prices have grown 2810% since they began tracking in 2018, and over the past year prices have soared 188% -
+           as has his popularity.
+         </p>
+         <p>
+          Overall, Longhorn Cards and Collectibles assigns SGA a Composite Rank of 91, Fundamental Rank of 88, Technical Rank of 99, and Sentiment Rank of 90 - with a rating of Buy. 
+           Pretty much all metrics are top decile.
+         </p>
+         <p>
+          The strong momentum in card prices is borderline parabolic, but given the underlying strength of his ranks it appears justified - 
+          more potential appreciation may be in store as the next season draws closer.
+         </p>
+         <img
+          src="/SGA.png"
+          alt="SGA"
+          style={imgStyle}
+          onClick={() => openImage("/SGA.png")}
+        />
+        <div style={actionsRow}>
+          <button style={openBtn} onClick={() => openPdf("/SGA.pdf")}>
+            View PDF
+          </button>
+          <a style={linkBtn} href="/SGA.pdf" download>
+            Download PDF
+          </a>
+          <a style={linkBtn} href="/SGA.png" download>
+            Download Image
+          </a>
+        </div>
+      </article>
+
+      {/* Blog Entry 17 */}
+      <article style={entryStyle}>
+        <h2 style={{ color: "#BF5700" }}>Battle of the 9's (PSA vs. BGS vs. SGC vs. CGC) (August 2025)</h2>
+        <p>
+          The 2003-04 Topps 221 Lebron James Rookie Card was used to compare the top-tier grading companies using a grade of 9 for each company.  
+         </p>
+         <p> 
+          The results show that PSA hands-down provided the highest sale value, followed by BGS, SGC, CGC, and finally ungraded (Raw).
+        </p>
+        <p>
+          This analysis helps confirm that despite the higher cost and longer turnaround time, PSA may provide the best return on 
+          investment for grading cards.
+         </p>
+         <img
+          src="/Battle.png"
+          alt="Battle"
+          style={imgStyle}
+          onClick={() => openImage("/Battle.png")}
+        />
+        <div style={actionsRow}>
+          <button style={openBtn} onClick={() => openPdf("/Battle.pdf")}>
+            View PDF
+          </button>
+          <a style={linkBtn} href="/Battle.pdf" download>
+            Download PDF
+          </a>
+          <a style={linkBtn} href="/Battle.png" download>
+            Download Image
+          </a>
+        </div>
+      </article>
+
       {/* Back to Home */}
       <div style={{ textAlign: "center", marginTop: "30px" }}>
         <Link to="/" style={{ color: "#BF5700", fontWeight: "bold" }}>
