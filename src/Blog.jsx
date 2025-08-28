@@ -874,6 +874,48 @@ export default function Blog() {
         </div>
       </article>
 
+      {/* Blog Entry 18 */}
+      <article style={entryStyle}>
+        <h2 style={{ color: "#BF5700" }}>PSA Grades (Comparison Down the Scale) (August 2025)</h2>
+        <p>
+          As Part 2 of the grading company analysis, this comparison looks at sale prices down the PSA scale from PSA 10 to PSA 5 for the 2003-04 Topps 221 LeBron James Rookie Card.  
+         </p>
+         <p> 
+          PSA 10’s clearly command an advantage over PSA 9’s with a value more than double that of the 9’s.
+        </p>
+        <p>
+          Likewise, PSA 9’s have over a 150% price advantage relative to PSA 8’s.
+         </p>
+         <p>
+          Interestingly, the sale price of an ungraded raw card is on par with a PSA 8.
+         </p>
+         <p>
+          As you move down the scale into PSA 7 through PSA 5, however, the price differences are much narrower, suggesting 
+          collectors should be crossing their fingers for anything PSA 8 or higher.
+         </p>
+         <p>
+          The key takeaway is that grading a card can carry pricing risks - if the grade comes back less than a PSA 8,
+           it may have been better to not grade the card at all.
+         </p>
+         <img
+          src="/PSA.png"
+          alt="PSA"
+          style={imgStyle}
+          onClick={() => openImage("/PSA.png")}
+        />
+        <div style={actionsRow}>
+          <button style={openBtn} onClick={() => openPdf("/PSA.pdf")}>
+            View PDF
+          </button>
+          <a style={linkBtn} href="/PSA.pdf" download>
+            Download PDF
+          </a>
+          <a style={linkBtn} href="/PSA.png" download>
+            Download Image
+          </a>
+        </div>
+      </article>
+
       {/* Back to Home */}
       <div style={{ textAlign: "center", marginTop: "30px" }}>
         <Link to="/" style={{ color: "#BF5700", fontWeight: "bold" }}>
