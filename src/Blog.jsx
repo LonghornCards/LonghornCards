@@ -373,6 +373,154 @@ export default function Blog() {
 
       {/* ------------------ YOUR POSTS BELOW (unchanged content) ------------------ */}
 
+      {/* Blog Entry 23 */}
+      <article style={entryStyle}>
+        <h2 style={{ color: "#BF5700" }}>
+          Prewar Vintage Player Highlights (August 2025)
+        </h2>
+        <p>
+          As mentioned in a previous post, the Card Ladder Prewar Vintage Index recently hit new all-time highs in terms of price.
+        </p>
+        <p>
+          The Prewar Vintage index consists of cards released prior to 1945.
+        </p>
+        <p>
+          Key players in this index include Babe Ruth, Lou Gehrig, Shoeless Joe Jackson, Ty Cobb, and many others.
+        </p>
+         <img
+          src="/PrewarPlayers.png"
+          alt="PrewarPlayers"
+          style={imgStyle}
+          onClick={() => openImage("/PrewarPlayers.png")}
+        />
+        <div style={actionsRow}>
+          <button style={openBtn} onClick={() => openPdf("/PrewarPlayers.pdf")}>
+            View PDF
+          </button>
+          <a style={linkBtn} href="/PrewarPlayers.pdf" download>
+            Download PDF
+          </a>
+          <a style={linkBtn} href="/PrewarPlayers.png" download>
+            Download Image
+          </a>
+        </div>
+      </article>
+      
+      {/* Blog Entry 22 */}
+      <article style={entryStyle}>
+        <h2 style={{ color: "#BF5700" }}>
+          Top 10 Composite Ranks (August 2025)
+        </h2>
+        <p>
+          The Longhorn Cards & Collectibles ranking methodology is designed to identify sports cards with the highest probability of appreciation over the medium term.
+        </p>
+        <p>
+          These proprietary calculations utilize historical card prices, player career statistics, and Google Trends data to reach an overall Composite Rank for each player.
+        </p>
+         <img
+          src="/Top10.png"
+          alt="Top10"
+          style={imgStyle}
+          onClick={() => openImage("/Top10.png")}
+        />
+        <div style={actionsRow}>
+          <button style={openBtn} onClick={() => openPdf("/Top10.pdf")}>
+            View PDF
+          </button>
+          <a style={linkBtn} href="/Top10.pdf" download>
+            Download PDF
+          </a>
+          <a style={linkBtn} href="/Top10.png" download>
+            Download Image
+          </a>
+        </div>
+      </article>
+      
+      {/* Blog Entry 21 */}
+      <article style={entryStyle}>
+        <h2 style={{ color: "#BF5700" }}>
+          Wilt Chamberlain Card Prices (August 2025)
+        </h2>
+        <p>
+          The 2008-09 Topps Chrome #178 Wilt Chamberlain /499 (Orange Refractor) (PSA 10) is available for sale in my eBay store.
+        </p>
+        <p>
+          Wilt Chamberlain played 14 years in the NBA, and averaged 30 points and 23 rebounds per game.  He’s commonly included as 
+          one of the best players of all time.
+        </p>
+        <p>
+          Per Card Ladder, since they started tracking prices in 2004, Wilt’s cards have returned 1370%.  Over the past year, his card prices are up 13.4%.
+        </p>
+        <p>
+          Longhorn Cards and Collectibles assigns Wilt an overall Composite Rank of 66, with a Fundamental Rank of 93, Technical Rank of 66, and Sentiment Rank of 13.  Currently Longhorn Cards and Collectibles has a Hold rating for Wilt.
+        </p>
+        <p>
+          Based on current technicals, there appears to be light at the end of the tunnel post the pandemic bubble in card prices.  
+          Like many others, Wilt’s cards have been working their way through a bear market.  Recently prices have turned up, however, 
+          and look to be making their way towards previous highs.
+        </p>
+                <img
+          src="/Wilt.png"
+          alt="Wilt"
+          style={imgStyle}
+          onClick={() => openImage("/Wilt.png")}
+        />
+        <div style={actionsRow}>
+          <button style={openBtn} onClick={() => openPdf("/Wilt.pdf")}>
+            View PDF
+          </button>
+          <a style={linkBtn} href="/Wilt.pdf" download>
+            Download PDF
+          </a>
+          <a style={linkBtn} href="/Wilt.png" download>
+            Download Image
+          </a>
+        </div>
+      </article>
+      
+      {/* Blog Entry 20 */}
+      <article style={entryStyle}>
+        <h2 style={{ color: "#BF5700" }}>
+          Aaron Rodgers Card Prices (August 2025)
+        </h2>
+        <p>
+          The 2014 Bowman Chrome #21 Aaron Rodgers /50 (Gold Refractor) (PSA 10) is available for sale in my eBay store.  There are only 8 graded
+          10 out of a PSA population of 15.
+        </p>
+        <p>
+          Aaron Rodgers has been in the league for 20 years now - considering the average length in the NFL is around 3 years, that longevity is impressive.  It appears he’ll be finishing his career with the Steelers and hopefully leave on a good note.
+        </p>
+        <p>
+          According to Card Ladder, Rodgers’ card prices have appreciated over 1500% since 2005, but they have declined over the past year.
+        </p>
+        <p>
+          Longhorn Cards and Collectibles currently rates Rodgers as a Hold, with a Composite Rank of 68, Fundamental Rank of 68, Technical Rank of 29, and Sentiment Rank of 96.
+        </p>
+        <p>
+          The high sentiment rank reflects his popularity and he garners a large fan base that should support market prices and liquidity.
+        </p>
+        <p>
+          From a technical perspective, Rodgers’ card prices are sitting on long-term support, and appear poised to rebound higher.  Getting back to the COVID levels would imply an advance of over 350%.
+        </p>
+        <img
+          src="/Rodgers.png"
+          alt="Rodgers"
+          style={imgStyle}
+          onClick={() => openImage("/Rodgers.png")}
+        />
+        <div style={actionsRow}>
+          <button style={openBtn} onClick={() => openPdf("/Rodgers.pdf")}>
+            View PDF
+          </button>
+          <a style={linkBtn} href="/Rodgers.pdf" download>
+            Download PDF
+          </a>
+          <a style={linkBtn} href="/Rodgers.png" download>
+            Download Image
+          </a>
+        </div>
+      </article>
+      
       {/* Blog Entry 19 */}
       <article style={entryStyle}>
         <h2 style={{ color: "#BF5700" }}>
