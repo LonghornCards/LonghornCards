@@ -1,6 +1,6 @@
 // src/Blog.jsx
 import React, { useState, useEffect, useRef, useLayoutEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import logo from "./assets/LogoSimple.jpg"; // ✅ import logo from src-assets
 
 export default function Blog() {
@@ -11,6 +11,14 @@ export default function Blog() {
 
   // PDF modal state
   const [pdfSrc, setPdfSrc] = useState(null);
+
+  // TOC (dropdown) state
+  const containerRef = useRef(null);
+  const [toc, setToc] = useState([]); // [{ id, title }]
+  const [filter, setFilter] = useState("");
+  const [selectedId, setSelectedId] = useState("");
+  const location = useLocation();
+  const navigate = useNavigate();
 
   // Close with ESC
   useEffect(() => {
@@ -29,7 +37,11 @@ export default function Blog() {
     if (!enlarged || !viewportRef.current) return;
     const vw = viewportRef.current.clientWidth;
     const vh = viewportRef.current.clientHeight;
-    const fitZ = Math.min(vw / enlarged.naturalWidth, vh / enlarged.naturalHeight, 1);
+    const fitZ = Math.min(
+      vw / enlarged.naturalWidth,
+      vh / enlarged.naturalHeight,
+      1
+    );
     setZoom(fitZ > 0 ? +fitZ.toFixed(3) : 1);
     requestAnimationFrame(() => {
       const wrap = viewportRef.current?.firstChild;
@@ -39,6 +51,48 @@ export default function Blog() {
       }
     });
   }, [enlarged]);
+
+  // Build TOC from article h2s (assign IDs if missing)
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const headings = Array.from(
+      containerRef.current.querySelectorAll("article h2")
+    );
+
+    const seen = new Set();
+    const safeSlug = (text) => {
+      const base = text
+        .toLowerCase()
+        .replace(/["“”]/g, "")
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, "")
+        .slice(0, 80) || "post";
+      let s = base;
+      let n = 2;
+      while (seen.has(s)) {
+        s = `${base}-${n++}`;
+      }
+      seen.add(s);
+      return s;
+    };
+
+    const built = headings.map((h) => {
+      if (!h.id) h.id = safeSlug(h.textContent || "post");
+      return { id: h.id, title: h.textContent || h.id };
+    });
+
+    setToc(built);
+
+    // If URL already has a hash, scroll to it (deep link support)
+    if (location.hash) {
+      const id = location.hash.replace("#", "");
+      const el = document.getElementById(id);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+        setSelectedId(id);
+      }
+    }
+  }, [location.hash]);
 
   // Styles
   const containerStyle = {
@@ -67,11 +121,60 @@ export default function Blog() {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: "40px",
+    marginBottom: "16px",
     gap: "15px",
   };
 
   const logoStyle = { width: 60, height: 60, borderRadius: 8 };
+
+  // Sticky toolbar for dropdown + filter
+  const toolbar = {
+    position: "sticky",
+    top: 8,
+    zIndex: 10,
+    background: "white",
+    border: "1px solid #eee",
+    borderRadius: 10,
+    padding: "10px 12px",
+    marginBottom: 24,
+    boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+  };
+
+  const toolbarRow = {
+    display: "grid",
+    gridTemplateColumns: "1fr 2fr auto",
+    gap: 10,
+    alignItems: "center",
+  };
+
+  const labelStyle = { fontWeight: 600, color: "#555" };
+
+  const selectStyle = {
+    width: "100%",
+    padding: "8px 10px",
+    borderRadius: 8,
+    border: "1px solid #ccc",
+    outline: "none",
+  };
+
+  const inputStyle = {
+    width: "100%",
+    padding: "8px 10px",
+    borderRadius: 8,
+    border: "1px solid #ccc",
+    outline: "none",
+  };
+
+  const goBtn = {
+    background: "#BF5700",
+    color: "white",
+    padding: "8px 12px",
+    border: "none",
+    borderRadius: 8,
+    fontWeight: 600,
+    cursor: "pointer",
+    whiteSpace: "nowrap",
+  };
 
   const entryStyle = {
     borderBottom: "1px solid #ccc",
@@ -172,7 +275,11 @@ export default function Blog() {
     if (!enlarged || !viewportRef.current) return;
     const vw = viewportRef.current.clientWidth;
     const vh = viewportRef.current.clientHeight;
-    const fitZ = Math.min(vw / enlarged.naturalWidth, vh / enlarged.naturalHeight, 1);
+    const fitZ = Math.min(
+      vw / enlarged.naturalWidth,
+      vh / enlarged.naturalHeight,
+      1
+    );
     setZoom(+fitZ.toFixed(3));
   };
 
@@ -194,8 +301,24 @@ export default function Blog() {
 
   const openPdf = (src) => setPdfSrc(src);
 
+  // Dropdown behavior
+  const filteredToc = toc.filter((t) =>
+    t.title.toLowerCase().includes(filter.toLowerCase())
+  );
+
+  const jumpTo = (id) => {
+    if (!id) return;
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      setSelectedId(id);
+      // Update hash (deep-link)
+      navigate(`#${id}`, { replace: true });
+    }
+  };
+
   return (
-    <div style={containerStyle}>
+    <div style={containerStyle} ref={containerRef}>
       {/* 🔝 Return to Home at the very top */}
       <div style={topNav}>
         <Link to="/" style={homeBtn}>
@@ -209,11 +332,54 @@ export default function Blog() {
         <h1 style={{ color: "#BF5700" }}>Longhorn Cards and Collectibles Blog</h1>
       </header>
 
-{/* Blog Entry 19 */}
+      {/* 🔎 Sticky "Jump to post" toolbar */}
+      <div style={toolbar} aria-label="Blog post navigator">
+        <div style={toolbarRow}>
+          <label htmlFor="post-filter" style={labelStyle}>
+            Filter posts
+          </label>
+          <input
+            id="post-filter"
+            type="text"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            placeholder="Type to filter by title…"
+            style={inputStyle}
+          />
+          <span />
+        </div>
+        <div style={{ ...toolbarRow, marginTop: 10 }}>
+          <label htmlFor="post-select" style={labelStyle}>
+            Jump to post
+          </label>
+          <select
+            id="post-select"
+            value={selectedId}
+            onChange={(e) => setSelectedId(e.target.value)}
+            style={selectStyle}
+          >
+            <option value="">— Select a post —</option>
+            {filteredToc.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.title}
+              </option>
+            ))}
+          </select>
+          <button style={goBtn} onClick={() => jumpTo(selectedId)}>
+            Go
+          </button>
+        </div>
+      </div>
+
+      {/* ------------------ YOUR POSTS BELOW (unchanged content) ------------------ */}
+
+      {/* Blog Entry 19 */}
       <article style={entryStyle}>
-        <h2 style={{ color: "#BF5700" }}>Kobe Bryant Card Prices (August 2025)</h2>
+        <h2 style={{ color: "#BF5700" }}>
+          Kobe Bryant Card Prices (August 2025)
+        </h2>
         <p>
-          This 2007 Topps Chrome #24 Kobe Bryant /999 (1957-58 Variation-Refractor) (PSA 9) is available for purchase at my eBay store.  
+          This 2007 Topps Chrome #24 Kobe Bryant /999 (1957-58 Variation-Refractor) (PSA 9) is available for purchase at my eBay store.
           There are only 101 PSA 9’s with only 10 higher, according to PSA.
         </p>
         <p>
@@ -224,7 +390,7 @@ export default function Blog() {
         </p>
         <p>
           Longhorn Cards and Collectibles has an overall Composite Rank of 87 for Kobe, which includes a Fundamental Rank of 68,
-             Technical Rank of 87, and Sentiment Rank of 90 - this results in a Buy rating for his cards.
+          Technical Rank of 87, and Sentiment Rank of 90 - this results in a Buy rating for his cards.
         </p>
         <p>
           As mentioned, card prices have been turning higher recently after entering a bear market post the pandemic.
@@ -251,21 +417,23 @@ export default function Blog() {
         </div>
       </article>
 
-{/* Blog Entry 18 */}
+      {/* Blog Entry 18 */}
       <article style={entryStyle}>
-        <h2 style={{ color: "#BF5700" }}>Prewar Vintage Index: New All-Time High (August 2025)</h2>
+        <h2 style={{ color: "#BF5700" }}>
+          Prewar Vintage Index: New All-Time High (August 2025)
+        </h2>
         <p>
-          The Prewar Vintage Index of cards released prior to 1945 just hit an all-time high, surpassing the level reached 
+          The Prewar Vintage Index of cards released prior to 1945 just hit an all-time high, surpassing the level reached
           during the Covid pandemic.
         </p>
         <p>
           Notable players in this era include Babe Ruth, Lou Gehrig, Honus Wagner, Cy Young, Ty Cobb, and Shoeless Joe Jackson.
         </p>
         <p>
-          Since Card Ladder started tracking prices in 2004, the index has returned 560%.  Over the past year, the index is up 18%.
+          Since Card Ladder started tracking prices in 2004, the index has returned 560%. Over the past year, the index is up 18%.
         </p>
         <p>
-            Sales volume metrics have been supportive of the move higher in card prices as well, with volumes surging in July and August 2025.
+          Sales volume metrics have been supportive of the move higher in card prices as well, with volumes surging in July and August 2025.
         </p>
         <img
           src="/PrewarIndex.png"
@@ -286,11 +454,11 @@ export default function Blog() {
         </div>
       </article>
 
-{/* Blog Entry 1 */}
+      {/* Blog Entry 1 */}
       <article style={entryStyle}>
         <h2 style={{ color: "#BF5700" }}>Scatterplot Overview (August 2025)</h2>
         <p>
-          The Longhorn Cards and Collectibles proprietary scatterplot allows for the analysis of player Composite Rankings, 
+          The Longhorn Cards and Collectibles proprietary scatterplot allows for the analysis of player Composite Rankings,
           Fundamental Rankings, Technical Rankings, and Sentiment Rankings.
         </p>
         <p>
@@ -298,16 +466,16 @@ export default function Blog() {
           yellow, and red coloring.
         </p>
         <p>
-          The key to understanding how to read the scatterplot is to know that higher ranking players, on average, should lead to 
+          The key to understanding how to read the scatterplot is to know that higher ranking players, on average, should lead to
           stronger and more consistent card prices over time.
         </p>
         <p>
-            For example, players in the green shaded area exhibit the highest current rankings, and many of these players are future
-            hall-of-fame contenders with strong historical career statistics and are well known to the broad public.
+          For example, players in the green shaded area exhibit the highest current rankings, and many of these players are future
+          hall-of-fame contenders with strong historical career statistics and are well known to the broad public.
         </p>
         <p>
-            The scatterplot can be used to both evaluate current cards to purchase as well as which ones to avoid until their underlying
-            rankings improve and offer more of a balance between risk and reward.
+          The scatterplot can be used to both evaluate current cards to purchase as well as which ones to avoid until their underlying
+          rankings improve and offer more of a balance between risk and reward.
         </p>
         <img
           src="/Scatter.png"
@@ -332,25 +500,25 @@ export default function Blog() {
       <article style={entryStyle}>
         <h2 style={{ color: "#BF5700" }}>Sentiment Rankings (August 2025)</h2>
         <p>
-          Sentiment Rankings are based on Google Trends data, and the rankings provide a sense of how relevant and popular 
+          Sentiment Rankings are based on Google Trends data, and the rankings provide a sense of how relevant and popular
           the respective players are versus other players.
         </p>
         <p>
-          On average, players that are more popular will garner a larger fanbase, and that fanbase is more likely to purchase 
+          On average, players that are more popular will garner a larger fanbase, and that fanbase is more likely to purchase
           that player's sports cards as opposed to a player that is relatively unknown or even disliked.
         </p>
         <p>
-          This measure of sentiment can be a critical factor as it makes the market for that player much larger, and should lead 
+          This measure of sentiment can be a critical factor as it makes the market for that player much larger, and should lead
           to stronger and more stable prices over time with a higher level of market liquidity.
         </p>
         <p>
-            In this example, you can see how LeBron James has held a very high and consistent sentiment ranking, whereas Tyler Herro 
-            and Victor Wembanyama have been more volatile since they are younger players.  Furthermore, "Shoeless" Joe Jackson has a 
-            relatively low sentiment ranking primarily because he's been deceased a long time and doesn't garner as much attention.
+          In this example, you can see how LeBron James has held a very high and consistent sentiment ranking, whereas Tyler Herro
+          and Victor Wembanyama have been more volatile since they are younger players. Furthermore, "Shoeless" Joe Jackson has a
+          relatively low sentiment ranking primarily because he's been deceased a long time and doesn't garner as much attention.
         </p>
         <p>
-            Sentiment rankings are a critical part of our proprietary Composite Ranking in order to gauge the potential market for that 
-            player as well as the future price potential for their cards over the longer term.
+          Sentiment rankings are a critical part of our proprietary Composite Ranking in order to gauge the potential market for that
+          player as well as the future price potential for their cards over the longer term.
         </p>
         <img
           src="/Sentiment.png"
@@ -371,28 +539,28 @@ export default function Blog() {
         </div>
       </article>
 
-{/* Blog Entry 3 */}
+      {/* Blog Entry 3 */}
       <article style={entryStyle}>
         <h2 style={{ color: "#BF5700" }}>Understanding Rankings (August 2025)</h2>
         <p>
-          Longhorn Cards and Collectibles calculates a number of different rankings that help gauge the overall strength and 
+          Longhorn Cards and Collectibles calculates a number of different rankings that help gauge the overall strength and
           quality of a sports player for determining potential card price appreciation over the longer term.
         </p>
         <p>
-          The Composite Rank is a combination of Technical Rank (based on historical card prices), Sentiment Rank (based on Google Trends), 
+          The Composite Rank is a combination of Technical Rank (based on historical card prices), Sentiment Rank (based on Google Trends),
           and Fundamental Rank (based on player's career statistics).
         </p>
         <p>
-          The combination of these different rankings, along with changes to a players fundamentals (statistics), helps to 
+          The combination of these different rankings, along with changes to a players fundamentals (statistics), helps to
           determine if that card should be purchased.
         </p>
         <p>
-            In addition, Fundamental Change is an important variable that compares the player's most recent season versus their historical 
-            average season to determine if they are outperforming, which should lead to robust card price returns.
+          In addition, Fundamental Change is an important variable that compares the player's most recent season versus their historical
+          average season to determine if they are outperforming, which should lead to robust card price returns.
         </p>
         <p>
-            Overall, the rankings provide a quantitative way to evaulate players based on numerous criteria in order to determine if they 
-            are suitable for your collection.
+          Overall, the rankings provide a quantitative way to evaulate players based on numerous criteria in order to determine if they
+          are suitable for your collection.
         </p>
         <img
           src="/Rankings.png"
@@ -413,7 +581,7 @@ export default function Blog() {
         </div>
       </article>
 
-{/* Blog Entry 4 */}
+      {/* Blog Entry 4 */}
       <article style={entryStyle}>
         <h2 style={{ color: "#BF5700" }}>Card Ladder Indexes (August 2025)</h2>
         <p>
@@ -512,24 +680,20 @@ export default function Blog() {
 
       {/* Blog Entry 7 */}
       <article style={entryStyle}>
-        <h2 style={{ color: "#BF5700" }}>History of Sports Trading Cards (August 2025)</h2>
+        <h2 style={{ color: "#BF5700" }}>
+          History of Sports Trading Cards (August 2025)
+        </h2>
+        <p>Sports Trading Cards have a long and illustrious history that spans nearly two centuries.</p>
         <p>
-          Sports Trading Cards have a long and illustrious history that spans nearly two centuries. 
-         </p>
-         <p> 
-          The global sports trading cards market size was valued at $14.9 billion in 2024 and is projected to reach $52.1 billion by 2034, 
+          The global sports trading cards market size was valued at $14.9 billion in 2024 and is projected to reach $52.1 billion by 2034,
           growing at a CAGR of 13% from 2024 to 2034.
         </p>
+        <p>Trading cards overall are still reboundinng from the massive increase in popularity during the pandemic.</p>
         <p>
-          Trading cards overall are still reboundinng from the massive increase in popularity during the pandemic. 
-         </p>
-         <p> 
-          Since their humble beginning, sports cards have evolved from simple advertising tools to multi-million-dollar investments, 
+          Since their humble beginning, sports cards have evolved from simple advertising tools to multi-million-dollar investments,
           but the present-day oversupply of “rare” cards due to artificial scarcity increases risks of entering a new “junk wax era”.
         </p>
-        <p>
-          Download and read the full History of Sports Trading Cards to dive deeper into the Hobby.
-        </p>
+        <p>Download and read the full History of Sports Trading Cards to dive deeper into the Hobby.</p>
         <img
           src="/History_of_Trading_Cards.png"
           alt="History of Trading Cards"
@@ -537,7 +701,10 @@ export default function Blog() {
           onClick={() => openImage("/History_of_Trading_Cards.png")}
         />
         <div style={actionsRow}>
-          <button style={openBtn} onClick={() => openPdf("/History_Of_Trading_Cards.pdf")}>
+          <button
+            style={openBtn}
+            onClick={() => openPdf("/History_Of_Trading_Cards.pdf")}
+          >
             View PDF
           </button>
           <a style={linkBtn} href="/History_Of_Trading_Cards.pdf" download>
@@ -551,17 +718,15 @@ export default function Blog() {
 
       {/* Blog Entry 8 */}
       <article style={entryStyle}>
-        <h2 style={{ color: "#BF5700" }}>BGS vs. PSA GEM MINT Sales Comparison (August 2025)</h2>
+        <h2 style={{ color: "#BF5700" }}>
+          BGS vs. PSA GEM MINT Sales Comparison (August 2025)
+        </h2>
+        <p>Per ALT, there is a striking difference between BGS and PSA GEM MINT rated cards.</p>
+        <p>The sales prices for PSA are often 2x-3x that of BGS for otherwise the same GEM MINT grade level.</p>
         <p>
-          Per ALT, there is a striking difference between BGS and PSA GEM MINT rated cards. 
-         </p>
-         <p> 
-          The sales prices for PSA are often 2x-3x that of BGS for otherwise the same GEM MINT grade level.
+          This is yet another example of PSA's dominance in the grading space, and how they can command a premium to other grading companies.
         </p>
-        <p>
-          This is yet another example of PSA's dominance in the grading space, and how they can command a premium to other grading companies. 
-         </p>
-         <img
+        <img
           src="/BGSvsPSA.png"
           alt="BGS vs. PSA GEM MINT"
           style={imgStyle}
@@ -580,28 +745,28 @@ export default function Blog() {
         </div>
       </article>
 
-{/* Blog Entry 9 */}
+      {/* Blog Entry 9 */}
       <article style={entryStyle}>
-        <h2 style={{ color: "#BF5700" }}>"Shoeless" Joe Jackson Card Prices (August 2025)</h2>
+        <h2 style={{ color: "#BF5700" }}>
+          "Shoeless" Joe Jackson Card Prices (August 2025)
+        </h2>
         <p>
           Over the past year, card prices for "Shoeless" Joe Jackson have soared 42% versus 18% for the Card Ladder Pre-War Vintage Index - which tracks cards released 1945 and earlier.
-         </p>
-         <p> 
-          Furthermore, "Shoeless" Joe Jackson's card prices have increased over 300% since Card Ladder began tracking data in 2008.
         </p>
         <p>
-          In looking at the price history, it's been almost a straight line up with incredible momentum to the upside.
-         </p>
-         <p>
-            For collectors, this type of price action is exactly what you want to see and it represents a rare opportunity for long-term appreciation.
-         </p>
-         <p>
-            Longhorn Cards and Collectibles has above-average rankings for "Shoeless" Joe Jackson in terms of overall Composite Rank, Fundamental Rank, and Technical Rank.
-         </p>
-         <p>
-            However, Sentiment Rank is in the bottom quartile compared to other players, and overall we rate the cards as a Hold for the meantime.
-         </p>
-         <img
+          Furthermore, "Shoeless" Joe Jackson's card prices have increased over 300% since Card Ladder began tracking data in 2008.
+        </p>
+        <p>In looking at the price history, it's been almost a straight line up with incredible momentum to the upside.</p>
+        <p>
+          For collectors, this type of price action is exactly what you want to see and it represents a rare opportunity for long-term appreciation.
+        </p>
+        <p>
+          Longhorn Cards and Collectibles has above-average rankings for "Shoeless" Joe Jackson in terms of overall Composite Rank, Fundamental Rank, and Technical Rank.
+        </p>
+        <p>
+          However, Sentiment Rank is in the bottom quartile compared to other players, and overall we rate the cards as a Hold for the meantime.
+        </p>
+        <img
           src="/Shoeless.png"
           alt="Shoeless Joe Jackson"
           style={imgStyle}
@@ -622,34 +787,31 @@ export default function Blog() {
 
       {/* Blog Entry 10 */}
       <article style={entryStyle}>
-        <h2 style={{ color: "#BF5700" }}>Sports Card Grading Companies (August 2025)</h2>
+        <h2 style={{ color: "#BF5700" }}>
+          Sports Card Grading Companies (August 2025)
+        </h2>
         <p>
-          This is a list of sports card grading companies with their respective non-bulk minimum prices, estimated turnaround time, and maximum 
+          This is a list of sports card grading companies with their respective non-bulk minimum prices, estimated turnaround time, and maximum
           insured values.
-         </p>
-         <p> 
-          Per ChatGPT, top-tier grading companies are PSA, BGS, SGC, and CGC.
         </p>
+        <p>Per ChatGPT, top-tier grading companies are PSA, BGS, SGC, and CGC.</p>
+        <p>Mid-tier grading companies are HGA, TAG, ISA, GMA, and MNT.</p>
+        <p>Finally, low-tier grading companies include RCG, FCG, PGI, WCG, and the others listed and not listed.</p>
+        <p>Despite the higher price, PSA has been shown to provide the highest value for their graded cards versus all other grading companies.</p>
         <p>
-          Mid-tier grading companies are HGA, TAG, ISA, GMA, and MNT.
-         </p>
-         <p>
-            Finally, low-tier grading companies include RCG, FCG, PGI, WCG, and the others listed and not listed.
-         </p>
-         <p>
-            Despite the higher price, PSA has been shown to provide the highest value for their graded cards versus all other grading companies.
-         </p>
-         <p>
-            However, there are exceptions of course because BGS, SGC, and CGC are top-tier companies similar to PSA.
-         </p>
-         <img
+          However, there are exceptions of course because BGS, SGC, and CGC are top-tier companies similar to PSA.
+        </p>
+        <img
           src="/GradingCompaniesFinal.png"
           alt="Grading Companies Final"
           style={imgStyle}
           onClick={() => openImage("/GradingCompaniesFinal.png")}
         />
         <div style={actionsRow}>
-          <button style={openBtn} onClick={() => openPdf("/GradingCompaniesFinal.pdf")}>
+          <button
+            style={openBtn}
+            onClick={() => openPdf("/GradingCompaniesFinal.pdf")}
+          >
             View PDF
           </button>
           <a style={linkBtn} href="/GradingCompaniesFinal.pdf" download>
@@ -663,43 +825,48 @@ export default function Blog() {
 
       {/* Blog Entry 11 */}
       <article style={entryStyle}>
-        <h2 style={{ color: "#BF5700" }}>Top Sports Card Grading Companies (August 2025)</h2>
+        <h2 style={{ color: "#BF5700" }}>
+          Top Sports Card Grading Companies (August 2025)
+        </h2>
         <p>
           PSA, BGS, SGC, and CGC are the top-tier sports card grading companies according to ChatGPT and other online sources.
-         </p>
-         <p> 
+        </p>
+        <p>
           This overview provides a summary for each company, detailed pricing, turnaround time information, and details about their process.
         </p>
         <p>
           Based on non-bulk pricing, currently BGS and SGC are tied for the cheapest minimum price per card, while SGC offers the most attractive turnaround time at base pricing.
-         </p>
-         <p>
-            Each grading company provides a different value proposition as well as different encapsulations (slabs) that may be appealing to different people.
-         </p>
-         <p>
-            PSA assigns grades based on different qualifiers using a process that is mostly objective, and their branded LightHouse 
-            Label provides full information including the grade and card details. 
-         </p>
-         <p>
-            BGS is especially renowned for grading newer cards, and assigns grades based on four subgrades:  centering, corners, edges, and surface.
-            They are known for their classy encapsulation design called the BGS Case Diagram.
-         </p>
-         <p>
-          SGC has build a reputation for its focus on older, vintage cards - especially historic baseball trading cards and memorabilia.  They are known 
+        </p>
+        <p>
+          Each grading company provides a different value proposition as well as different encapsulations (slabs) that may be appealing to different people.
+        </p>
+        <p>
+          PSA assigns grades based on different qualifiers using a process that is mostly objective, and their branded LightHouse
+          Label provides full information including the grade and card details.
+        </p>
+        <p>
+          BGS is especially renowned for grading newer cards, and assigns grades based on four subgrades: centering, corners, edges, and surface.
+          They are known for their classy encapsulation design called the BGS Case Diagram.
+        </p>
+        <p>
+          SGC has build a reputation for its focus on older, vintage cards - especially historic baseball trading cards and memorabilia. They are known
           for their straight-forward grading scale and fast turnaround times, with a distinctive tuxedo-like black matting within their encapsulation.
-         </p>
-         <p>
-          CGC is a newer entrant to sports card grading and they are leveraging their expertise from grading comic books.  They employ a team effort 
+        </p>
+        <p>
+          CGC is a newer entrant to sports card grading and they are leveraging their expertise from grading comic books. They employ a team effort
           with advanced technology, and they stand out for their state-of-the-art encapsulation design.
-         </p>
-         <img
+        </p>
+        <img
           src="/TopGradingCompaniesFinal.png"
           alt="Top Grading Companies Final"
           style={imgStyle}
           onClick={() => openImage("/TopGradingCompaniesFinal.png")}
         />
         <div style={actionsRow}>
-          <button style={openBtn} onClick={() => openPdf("/TopGradingCompaniesFinal.pdf")}>
+          <button
+            style={openBtn}
+            onClick={() => openPdf("/TopGradingCompaniesFinal.pdf")}
+          >
             View PDF
           </button>
           <a style={linkBtn} href="/TopGradingCompaniesFinal.pdf" download>
@@ -710,22 +877,24 @@ export default function Blog() {
           </a>
         </div>
       </article>
-      
+
       {/* Blog Entry 12 */}
       <article style={entryStyle}>
-        <h2 style={{ color: "#BF5700" }}>Most Expensive Card Sales of All-Time (August 2025)</h2>
+        <h2 style={{ color: "#BF5700" }}>
+          Most Expensive Card Sales of All-Time (August 2025)
+        </h2>
         <p>
-          According to Cllct, the nearly $13M purchase of the 2007-08 Upper Deck Exquisite Collection Michael Jordan and Kobe Bryant Dual Logoman set a new 
+          According to Cllct, the nearly $13M purchase of the 2007-08 Upper Deck Exquisite Collection Michael Jordan and Kobe Bryant Dual Logoman set a new
           all-time high record for card sales, surpassing the $12.6M previous record for the 1952 Topps Mickey Mantle SGC 9.5.
-         </p>
-         <p> 
-          This $13M purchase also surpassed the previous record for a basketball card, which was $5.2M for the Exquisite Collection LeBron 
+        </p>
+        <p>
+          This $13M purchase also surpassed the previous record for a basketball card, which was $5.2M for the Exquisite Collection LeBron
           James Gold Rookie Patch Autograph /23.
         </p>
         <p>
           The new owners of the most expensive card are Kevin O'Leary (aka Mr. Wonderful) and his business partners Matt Allen and Paul Warshaw.
-         </p>
-         <img
+        </p>
+        <img
           src="/AllTimeSales.png"
           alt="All Time Sales"
           style={imgStyle}
@@ -746,31 +915,29 @@ export default function Blog() {
 
       {/* Blog Entry 13 */}
       <article style={entryStyle}>
-        <h2 style={{ color: "#BF5700" }}>Warren Buffett Autographed 1999 Shareholder Meeting Pass (August 2025)</h2>
+        <h2 style={{ color: "#BF5700" }}>
+          Warren Buffett Autographed 1999 Shareholder Meeting Pass (August 2025)
+        </h2>
         <p>
-          This Berkshire Hathaway 1999 Annual Meeting pass is autographed by Warren Buffett and comes with a Letter  of Authenticity.  
-          Please visit my eBay store to make an offer.  
-         </p>
-         <p> 
-          This meeting occurred right in the middle of the Dot-com bubble, and Warren Buffett and Charlie Munger spent much of the meeting defending 
-          their decision not to invest in internet/technology companies.
+          This Berkshire Hathaway 1999 Annual Meeting pass is autographed by Warren Buffett and comes with a Letter of Authenticity.
+          Please visit my eBay store to make an offer.
         </p>
         <p>
-          Per ChatGPT, during the meeting many shareholders pressed them on why Berkshire Hathaway was avoiding the "new economy".
-         </p>
-         <p>
-          Warren Buffett reiterated his philosphy of only invesing in businesses he understood, while emphasizing durable 
-          competitive advantages, predictable cash flows, and reasonable valuations - all of which most technology companies during 
+          This meeting occurred right in the middle of the Dot-com bubble, and Warren Buffett and Charlie Munger spent much of the meeting defending
+          their decision not to invest in internet/technology companies.
+        </p>
+        <p>Per ChatGPT, during the meeting many shareholders pressed them on why Berkshire Hathaway was avoiding the "new economy".</p>
+        <p>
+          Warren Buffett reiterated his philosphy of only invesing in businesses he understood, while emphasizing durable
+          competitive advantages, predictable cash flows, and reasonable valuations - all of which most technology companies during
           that time lacked as they did not have proven business models.
-         </p>
-         <p>
-          During the meeting, Warren Buffett acknowledged all the excitement around the internet but warned about "speculative fever".
-         </p>
-         <p>
-          A quote from Warren Buffett at a different time best reflects the sentiment of this meeting:  "Buy into a company because 
+        </p>
+        <p>During the meeting, Warren Buffett acknowledged all the excitement around the internet but warned about "speculative fever".</p>
+        <p>
+          A quote from Warren Buffett at a different time best reflects the sentiment of this meeting: "Buy into a company because
           you want to own it, not because you want the stock to go up."
-         </p>
-         <img
+        </p>
+        <img
           src="/Buffett.png"
           alt="Buffett"
           style={imgStyle}
@@ -791,26 +958,28 @@ export default function Blog() {
 
       {/* Blog Entry 14 */}
       <article style={entryStyle}>
-        <h2 style={{ color: "#BF5700" }}>Drew Brees Card Prices (August 2025)</h2>
+        <h2 style={{ color: "#BF5700" }}>
+          Drew Brees Card Prices (August 2025)
+        </h2>
         <p>
-          The 2001 Bowman's Best Drew Brees Certified Autograph PSA 9 Rookie Card is available for sale in my eBay store.  
-         </p>
-         <p> 
-          Longhorn Cards and Collectibles' proprietary rankings show Drew Brees finished his career near the top decile in terms 
+          The 2001 Bowman's Best Drew Brees Certified Autograph PSA 9 Rookie Card is available for sale in my eBay store.
+        </p>
+        <p>
+          Longhorn Cards and Collectibles' proprietary rankings show Drew Brees finished his career near the top decile in terms
           of Fundamental Rank.
         </p>
         <p>
-          Overall, Brees has a Composite Rank of 60, Fundamental Rank of 89, Technical Rank of 60, and Sentiment Rank of 33 - which 
+          Overall, Brees has a Composite Rank of 60, Fundamental Rank of 89, Technical Rank of 60, and Sentiment Rank of 33 - which
           equates to a Hold rating according to Longhorn Cards and Collectibles.
-         </p>
-         <p>
+        </p>
+        <p>
           According to Card Ladder, since 2004 Brees' card prices have soard 10,311% and over the past year prices are up nearly 9%.
-         </p>
-         <p>
-          Recently, Drew Brees' card prices have turned higher post the Covid bubble and subsequent bear market, which puts his cards 
+        </p>
+        <p>
+          Recently, Drew Brees' card prices have turned higher post the Covid bubble and subsequent bear market, which puts his cards
           in excellent shape to move higher over the longer term.
-         </p>
-         <img
+        </p>
+        <img
           src="/Brees.png"
           alt="Drew Brees"
           style={imgStyle}
@@ -831,36 +1000,38 @@ export default function Blog() {
 
       {/* Blog Entry 15 */}
       <article style={entryStyle}>
-        <h2 style={{ color: "#BF5700" }}>Card Daily Volume & Monthly Sales Count (August 2025)</h2>
+        <h2 style={{ color: "#BF5700" }}>
+          Card Daily Volume & Monthly Sales Count (August 2025)
+        </h2>
         <p>
-          Per Card Ladder, card daily volume represents the total amount of money spent on cards tracked in their sales history 
-          database each day.  
-         </p>
-         <p> 
+          Per Card Ladder, card daily volume represents the total amount of money spent on cards tracked in their sales history
+          database each day.
+        </p>
+        <p>
           Monthly sales count is the total number of transactions tracked in Card Ladder's sales history database each month.
         </p>
         <p>
-          In analyzing the chart patterns, it's clear there was a massive bubble during the pandemic, which resulted in a 
+          In analyzing the chart patterns, it's clear there was a massive bubble during the pandemic, which resulted in a
           temporary surge in daily volume and an increase in the monthly sales count.
-         </p>
-         <p>
-          However, the recent data shows that since the end of the pandemic, both daily volume and monthly sales count have increased 
+        </p>
+        <p>
+          However, the recent data shows that since the end of the pandemic, both daily volume and monthly sales count have increased
           well above the levels prior to the pandemic.
-         </p>
-         <p>
+        </p>
+        <p>
           This structural change in the marketplace has significant implications for market liquidity and overall transaction dynamics.
-         </p>
-         <p>
+        </p>
+        <p>
           In particular, the monthly sales count has almost gone parabolic - reflecting soaring transactions post the pandemic.
-         </p>
-         <p>
+        </p>
+        <p>
           Likewise, daily volume has continued to bubble higher and higher towards the levels experienced during the pandemic.
-         </p>
-         <p>
-          The key takeaway from this data is that the sports card market has undergone a structural change towards higher volume and 
+        </p>
+        <p>
+          The key takeaway from this data is that the sports card market has undergone a structural change towards higher volume and
           more transactions than prior to the pandemic, which should improve overall market efficiency.
-         </p>
-         <img
+        </p>
+        <img
           src="/VolumeSales.png"
           alt="Volume and Sales"
           style={imgStyle}
@@ -881,26 +1052,28 @@ export default function Blog() {
 
       {/* Blog Entry 16 */}
       <article style={entryStyle}>
-        <h2 style={{ color: "#BF5700" }}>Shai Gilgeous-Alexander Card Prices (August 2025)</h2>
+        <h2 style={{ color: "#BF5700" }}>
+          Shai Gilgeous-Alexander Card Prices (August 2025)
+        </h2>
         <p>
-          This 2022 Donruss Optic #44 Shai Gilgeous-Alexander /24 (Choice Blue Mojo) (PSA 10) is available for purchase in my eBay store.  
-         </p>
-         <p> 
+          This 2022 Donruss Optic #44 Shai Gilgeous-Alexander /24 (Choice Blue Mojo) (PSA 10) is available for purchase in my eBay store.
+        </p>
+        <p>
           Shai Gilgeous-Alexander (SGA) is obviously a superior talent having won NBA and Finals MVP during the 2024-25 season, as well as a championship ring.
         </p>
         <p>
           According to Card Ladder, his card prices have grown 2810% since they began tracking in 2018, and over the past year prices have soared 188% -
-           as has his popularity.
-         </p>
-         <p>
-          Overall, Longhorn Cards and Collectibles assigns SGA a Composite Rank of 91, Fundamental Rank of 88, Technical Rank of 99, and Sentiment Rank of 90 - with a rating of Buy. 
-           Pretty much all metrics are top decile.
-         </p>
-         <p>
-          The strong momentum in card prices is borderline parabolic, but given the underlying strength of his ranks it appears justified - 
+          as has his popularity.
+        </p>
+        <p>
+          Overall, Longhorn Cards and Collectibles assigns SGA a Composite Rank of 91, Fundamental Rank of 88, Technical Rank of 99, and Sentiment Rank of 90 - with a rating of Buy.
+          Pretty much all metrics are top decile.
+        </p>
+        <p>
+          The strong momentum in card prices is borderline parabolic, but given the underlying strength of his ranks it appears justified -
           more potential appreciation may be in store as the next season draws closer.
-         </p>
-         <img
+        </p>
+        <img
           src="/SGA.png"
           alt="SGA"
           style={imgStyle}
@@ -921,18 +1094,20 @@ export default function Blog() {
 
       {/* Blog Entry 17 */}
       <article style={entryStyle}>
-        <h2 style={{ color: "#BF5700" }}>Battle of the 9's (PSA vs. BGS vs. SGC vs. CGC) (August 2025)</h2>
+        <h2 style={{ color: "#BF5700" }}>
+          Battle of the 9's (PSA vs. BGS vs. SGC vs. CGC) (August 2025)
+        </h2>
         <p>
-          The 2003-04 Topps 221 Lebron James Rookie Card was used to compare the top-tier grading companies using a grade of 9 for each company.  
-         </p>
-         <p> 
+          The 2003-04 Topps 221 Lebron James Rookie Card was used to compare the top-tier grading companies using a grade of 9 for each company.
+        </p>
+        <p>
           The results show that PSA hands-down provided the highest sale value, followed by BGS, SGC, CGC, and finally ungraded (Raw).
         </p>
         <p>
-          This analysis helps confirm that despite the higher cost and longer turnaround time, PSA may provide the best return on 
+          This analysis helps confirm that despite the higher cost and longer turnaround time, PSA may provide the best return on
           investment for grading cards.
-         </p>
-         <img
+        </p>
+        <img
           src="/Battle.png"
           alt="Battle"
           style={imgStyle}
@@ -951,30 +1126,26 @@ export default function Blog() {
         </div>
       </article>
 
-      {/* Blog Entry 18 */}
+      {/* Blog Entry 18 (second “18” in original) */}
       <article style={entryStyle}>
-        <h2 style={{ color: "#BF5700" }}>PSA Grades (Comparison Down the Scale) (August 2025)</h2>
+        <h2 style={{ color: "#BF5700" }}>
+          PSA Grades (Comparison Down the Scale) (August 2025)
+        </h2>
         <p>
-          As Part 2 of the grading company analysis, this comparison looks at sale prices down the PSA scale from PSA 10 to PSA 5 for the 2003-04 Topps 221 LeBron James Rookie Card.  
-         </p>
-         <p> 
-          PSA 10’s clearly command an advantage over PSA 9’s with a value more than double that of the 9’s.
+          As Part 2 of the grading company analysis, this comparison looks at sale prices down the PSA scale from PSA 10 to PSA 5 for the 2003-04 Topps 221 LeBron James Rookie Card.
+        </p>
+        <p>PSA 10’s clearly command an advantage over PSA 9’s with a value more than double that of the 9’s.</p>
+        <p>Likewise, PSA 9’s have over a 150% price advantage relative to PSA 8’s.</p>
+        <p>Interestingly, the sale price of an ungraded raw card is on par with a PSA 8.</p>
+        <p>
+          As you move down the scale into PSA 7 through PSA 5, however, the price differences are much narrower, suggesting
+          collectors should be crossing their fingers for anything PSA 8 or higher.
         </p>
         <p>
-          Likewise, PSA 9’s have over a 150% price advantage relative to PSA 8’s.
-         </p>
-         <p>
-          Interestingly, the sale price of an ungraded raw card is on par with a PSA 8.
-         </p>
-         <p>
-          As you move down the scale into PSA 7 through PSA 5, however, the price differences are much narrower, suggesting 
-          collectors should be crossing their fingers for anything PSA 8 or higher.
-         </p>
-         <p>
           The key takeaway is that grading a card can carry pricing risks - if the grade comes back less than a PSA 8,
-           it may have been better to not grade the card at all.
-         </p>
-         <img
+          it may have been better to not grade the card at all.
+        </p>
+        <img
           src="/PSA.png"
           alt="PSA"
           style={imgStyle}
@@ -1008,11 +1179,21 @@ export default function Blog() {
           onWheel={handleWheelZoom}
         >
           <div style={controls} onClick={stopOverlayClick}>
-            <button style={btn} onClick={zoomOut}>−</button>
-            <button style={btn} onClick={zoomIn}>+</button>
-            <button style={btn} onClick={setFit}>Fit</button>
-            <button style={btn} onClick={setHundred}>100%</button>
-            <button style={closeBtn} onClick={() => setEnlarged(null)}>Close</button>
+            <button style={btn} onClick={zoomOut}>
+              −
+            </button>
+            <button style={btn} onClick={zoomIn}>
+              +
+            </button>
+            <button style={btn} onClick={setFit}>
+              Fit
+            </button>
+            <button style={btn} onClick={setHundred}>
+              100%
+            </button>
+            <button style={closeBtn} onClick={() => setEnlarged(null)}>
+              Close
+            </button>
           </div>
 
           <div
@@ -1053,10 +1234,7 @@ export default function Blog() {
 
       {/* PDF MODAL */}
       {pdfSrc && (
-        <div
-          style={modalOverlay}
-          onClick={() => setPdfSrc(null)}
-        >
+        <div style={modalOverlay} onClick={() => setPdfSrc(null)}>
           <div style={controls} onClick={stopOverlayClick}>
             <a style={btn} href={pdfSrc} target="_blank" rel="noreferrer">
               Open in New Tab
@@ -1064,7 +1242,9 @@ export default function Blog() {
             <a style={btn} href={pdfSrc} download>
               Download
             </a>
-            <button style={closeBtn} onClick={() => setPdfSrc(null)}>Close</button>
+            <button style={closeBtn} onClick={() => setPdfSrc(null)}>
+              Close
+            </button>
           </div>
 
           <div
