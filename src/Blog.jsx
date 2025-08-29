@@ -373,6 +373,48 @@ export default function Blog() {
 
       {/* ------------------ YOUR POSTS BELOW (unchanged content) ------------------ */}
 
+      {/* Blog Entry 24 */}
+      <article style={entryStyle}>
+        <h2 style={{ color: "#BF5700" }}>
+          Joe Montana Card Prices (August 2025)
+        </h2>
+        <p>
+          The 2021 Panini Prizm #FAJM Joe Montana /25 (Flashback Purple Power Auto) (PSA 8) is available for purchase at my eBay store.  Population 3 according to PSA with a total population of 9.
+        </p>
+        <p>
+          Joe Montana is a 4 time Super Bowl champion and member of the Hall of Fame, with the nicknames “Cool Joe” and “The Comeback Kid.”
+        </p>
+        <p>
+          According to Card Ladder, Montana’s card prices have increased over 1000% since they started tracking in 2004, and over the past year card prices are up 37%.
+        </p>
+        <p>
+          Longhorn Cards and Collectibles assigns him a Composite Rank of 57, Fundamental Rank of 57, Technical Rank of 89, and Sentiment Rank of 29, with an overall Hold rating at this time.
+        </p>
+        <p>
+          Going forward, given the strong technicals, card prices are poised to move higher and have recently broken out to the upside - just shy of the level reached during the pandemic.
+        </p>
+        <p>
+          If card prices continue to have momentum, it would only take a 27% move higher to reach all-time highs, which may propel prices even further to the upside.
+        </p>
+         <img
+          src="/Montana.png"
+          alt="Montana"
+          style={imgStyle}
+          onClick={() => openImage("/Montana.png")}
+        />
+        <div style={actionsRow}>
+          <button style={openBtn} onClick={() => openPdf("/Montana.pdf")}>
+            View PDF
+          </button>
+          <a style={linkBtn} href="/Montana.pdf" download>
+            Download PDF
+          </a>
+          <a style={linkBtn} href="/Montana.png" download>
+            Download Image
+          </a>
+        </div>
+      </article>      
+      
       {/* Blog Entry 23 */}
       <article style={entryStyle}>
         <h2 style={{ color: "#BF5700" }}>
