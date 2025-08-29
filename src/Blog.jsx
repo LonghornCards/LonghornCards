@@ -209,6 +209,83 @@ export default function Blog() {
         <h1 style={{ color: "#BF5700" }}>Longhorn Cards and Collectibles Blog</h1>
       </header>
 
+{/* Blog Entry 19 */}
+      <article style={entryStyle}>
+        <h2 style={{ color: "#BF5700" }}>Kobe Bryant Card Prices (August 2025)</h2>
+        <p>
+          This 2007 Topps Chrome #24 Kobe Bryant /999 (1957-58 Variation-Refractor) (PSA 9) is available for purchase at my eBay store.  
+          There are only 101 PSA 9’s with only 10 higher, according to PSA.
+        </p>
+        <p>
+          Kobe Bryant recently made history again along with Michael Jordan as the most expensive sports card ever sold at $13M.
+        </p>
+        <p>
+          According to Card Ladder, Kobe’s card prices have been soaring over the past year - up 44% - and since they started tracking prices in 2004, his cards have appreciated 2245%.
+        </p>
+        <p>
+          Longhorn Cards and Collectibles has an overall Composite Rank of 87 for Kobe, which includes a Fundamental Rank of 68,
+             Technical Rank of 87, and Sentiment Rank of 90 - this results in a Buy rating for his cards.
+        </p>
+        <p>
+          As mentioned, card prices have been turning higher recently after entering a bear market post the pandemic.
+        </p>
+        <p>
+          Going forward, with positive rankings and technical momentum, card prices appear poised to challenge the Covid highs over the medium/longer term - which implies over a 200% return from current levels.
+        </p>
+        <img
+          src="/Kobe.png"
+          alt="Kobe"
+          style={imgStyle}
+          onClick={() => openImage("/Kobe.png")}
+        />
+        <div style={actionsRow}>
+          <button style={openBtn} onClick={() => openPdf("/Kobe.pdf")}>
+            View PDF
+          </button>
+          <a style={linkBtn} href="/Kobe.pdf" download>
+            Download PDF
+          </a>
+          <a style={linkBtn} href="/Kobe.png" download>
+            Download Image
+          </a>
+        </div>
+      </article>
+
+{/* Blog Entry 18 */}
+      <article style={entryStyle}>
+        <h2 style={{ color: "#BF5700" }}>Prewar Vintage Index: New All-Time High (August 2025)</h2>
+        <p>
+          The Prewar Vintage Index of cards released prior to 1945 just hit an all-time high, surpassing the level reached 
+          during the Covid pandemic.
+        </p>
+        <p>
+          Notable players in this era include Babe Ruth, Lou Gehrig, Honus Wagner, Cy Young, Ty Cobb, and Shoeless Joe Jackson.
+        </p>
+        <p>
+          Since Card Ladder started tracking prices in 2004, the index has returned 560%.  Over the past year, the index is up 18%.
+        </p>
+        <p>
+            Sales volume metrics have been supportive of the move higher in card prices as well, with volumes surging in July and August 2025.
+        </p>
+        <img
+          src="/PrewarIndex.png"
+          alt="PrewarIndex"
+          style={imgStyle}
+          onClick={() => openImage("/PrewarIndex.png")}
+        />
+        <div style={actionsRow}>
+          <button style={openBtn} onClick={() => openPdf("/PrewarIndex.pdf")}>
+            View PDF
+          </button>
+          <a style={linkBtn} href="/PrewarIndex.pdf" download>
+            Download PDF
+          </a>
+          <a style={linkBtn} href="/PrewarIndex.png" download>
+            Download Image
+          </a>
+        </div>
+      </article>
+
 {/* Blog Entry 1 */}
       <article style={entryStyle}>
         <h2 style={{ color: "#BF5700" }}>Scatterplot Overview (August 2025)</h2>
