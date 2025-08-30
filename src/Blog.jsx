@@ -12,11 +12,16 @@ export default function Blog() {
   // PDF modal state
   const [pdfSrc, setPdfSrc] = useState(null);
 
-  // TOC (dropdown) state
+  // TOC (dropdown) + search state
   const containerRef = useRef(null);
   const [toc, setToc] = useState([]); // [{ id, title }]
-  const [filter, setFilter] = useState("");
+  const [titleFilter, setTitleFilter] = useState("");
   const [selectedId, setSelectedId] = useState("");
+
+  // Date filter state
+  const [dateOptions, setDateOptions] = useState([]); // [{ key: "2025-08", label: "August 2025", count }]
+  const [dateFilter, setDateFilter] = useState(""); // "YYYY-MM" or ""
+
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -52,16 +57,37 @@ export default function Blog() {
     });
   }, [enlarged]);
 
-  // Build TOC from article h2s (assign IDs if missing)
+  // Helpers for parsing month/year from "(Month YYYY)" in H2 text
+  const MONTHS = [
+    "january","february","march","april","may","june",
+    "july","august","september","october","november","december"
+  ];
+  const monthToIndex = (m) => MONTHS.indexOf(m.toLowerCase()); // 0-11
+
+  const parseMonthKeyFromTitle = (titleText) => {
+    // Expect something like: "... (August 2025)" (parentheses at end)
+    const match = titleText.match(/\((January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})\)\s*$/i);
+    if (!match) return null;
+    const monthName = match[1];
+    const yearStr = match[2];
+    const mIdx = monthToIndex(monthName);
+    if (mIdx === -1) return null;
+    const ym = `${yearStr}-${String(mIdx + 1).padStart(2,"0")}`; // "YYYY-MM"
+    return { key: ym, label: `${monthName} ${yearStr}` };
+  };
+
+  // Build TOC + Date options from article h2s (assign IDs if missing)
   useEffect(() => {
     if (!containerRef.current) return;
+
     const headings = Array.from(
       containerRef.current.querySelectorAll("article h2")
     );
 
+    // safe slug generator
     const seen = new Set();
     const safeSlug = (text) => {
-      const base = text
+      const base = (text || "post")
         .toLowerCase()
         .replace(/["“”]/g, "")
         .replace(/[^a-z0-9]+/g, "-")
@@ -69,21 +95,38 @@ export default function Blog() {
         .slice(0, 80) || "post";
       let s = base;
       let n = 2;
-      while (seen.has(s)) {
-        s = `${base}-${n++}`;
-      }
+      while (seen.has(s)) s = `${base}-${n++}`;
       seen.add(s);
       return s;
     };
 
-    const built = headings.map((h) => {
+    // Build TOC and tag each article with a data-month key
+    const builtToc = [];
+    const monthMap = new Map(); // key -> { label, count }
+    headings.forEach((h) => {
       if (!h.id) h.id = safeSlug(h.textContent || "post");
-      return { id: h.id, title: h.textContent || h.id };
+      builtToc.push({ id: h.id, title: h.textContent || h.id });
+
+      // find the article element and attach the parsed month key if available
+      const articleEl = h.closest("article");
+      const parsed = parseMonthKeyFromTitle(h.textContent || "");
+      if (articleEl && parsed) {
+        articleEl.setAttribute("data-month", parsed.key);
+        // count for dropdown
+        const prev = monthMap.get(parsed.key) || { label: parsed.label, count: 0 };
+        monthMap.set(parsed.key, { label: parsed.label, count: prev.count + 1 });
+      }
     });
 
-    setToc(built);
+    // Sort months descending (newest first)
+    const sorted = Array.from(monthMap.entries())
+      .sort((a, b) => (a[0] < b[0] ? 1 : -1))
+      .map(([key, { label, count }]) => ({ key, label, count }));
 
-    // If URL already has a hash, scroll to it (deep link support)
+    setToc(builtToc);
+    setDateOptions(sorted);
+
+    // Deep link: hash to post
     if (location.hash) {
       const id = location.hash.replace("#", "");
       const el = document.getElementById(id);
@@ -94,6 +137,39 @@ export default function Blog() {
     }
   }, [location.hash]);
 
+  // Initialize date filter from URL (?month=YYYY-MM), if present
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const m = params.get("month");
+    if (m && m !== dateFilter) {
+      setDateFilter(m);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // run once on mount
+
+  // Apply date filtering by showing/hiding <article> elements
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const articles = Array.from(containerRef.current.querySelectorAll("article"));
+    articles.forEach((art) => {
+      const artMonth = art.getAttribute("data-month"); // may be null if no parsable date
+      if (!dateFilter || (artMonth && artMonth === dateFilter)) {
+        art.style.display = ""; // show
+      } else {
+        art.style.display = "none"; // hide
+      }
+    });
+
+    // keep URL in sync: ?month=YYYY-MM (or remove param if "All Dates")
+    const params = new URLSearchParams(location.search);
+    if (dateFilter) {
+      params.set("month", dateFilter);
+    } else {
+      params.delete("month");
+    }
+    navigate({ search: params.toString() ? `?${params.toString()}` : "" }, { replace: true });
+  }, [dateFilter, location.search, navigate]);
+
   // Styles
   const containerStyle = {
     fontFamily: "Arial, sans-serif",
@@ -103,10 +179,7 @@ export default function Blog() {
     color: "#222",
   };
 
-  const topNav = {
-    textAlign: "left",
-    marginBottom: "20px",
-  };
+  const topNav = { textAlign: "left", marginBottom: "20px" };
 
   const homeBtn = {
     background: "#BF5700",
@@ -127,7 +200,7 @@ export default function Blog() {
 
   const logoStyle = { width: 60, height: 60, borderRadius: 8 };
 
-  // Sticky toolbar for dropdown + filter
+  // Sticky toolbar for search + jump + date filter
   const toolbar = {
     position: "sticky",
     top: 8,
@@ -145,6 +218,14 @@ export default function Blog() {
     gridTemplateColumns: "1fr 2fr auto",
     gap: 10,
     alignItems: "center",
+  };
+
+  const toolbarRow2 = {
+    display: "grid",
+    gridTemplateColumns: "1fr 2fr",
+    gap: 10,
+    alignItems: "center",
+    marginTop: 10,
   };
 
   const labelStyle = { fontWeight: 600, color: "#555" };
@@ -209,11 +290,7 @@ export default function Blog() {
     cursor: "pointer",
   };
 
-  const linkBtn = {
-    color: "#BF5700",
-    fontWeight: 600,
-    textDecoration: "underline",
-  };
+  const linkBtn = { color: "#BF5700", fontWeight: 600, textDecoration: "underline" };
 
   const modalOverlay = {
     position: "fixed",
@@ -254,11 +331,7 @@ export default function Blog() {
     cursor: "pointer",
   };
 
-  const closeBtn = {
-    ...btn,
-    background: "#ffefe8",
-    color: "#BF5700",
-  };
+  const closeBtn = { ...btn, background: "#ffefe8", color: "#BF5700" };
 
   // Handlers
   const stopOverlayClick = (e) => e.stopPropagation();
@@ -303,7 +376,7 @@ export default function Blog() {
 
   // Dropdown behavior
   const filteredToc = toc.filter((t) =>
-    t.title.toLowerCase().includes(filter.toLowerCase())
+    t.title.toLowerCase().includes(titleFilter.toLowerCase())
   );
 
   const jumpTo = (id) => {
@@ -332,22 +405,25 @@ export default function Blog() {
         <h1 style={{ color: "#BF5700" }}>Longhorn Cards and Collectibles Blog</h1>
       </header>
 
-      {/* 🔎 Sticky "Jump to post" toolbar */}
+      {/* 🔎 Sticky controls: Title filter, Jump to, and Date filter */}
       <div style={toolbar} aria-label="Blog post navigator">
+        {/* Row 1: Filter by title + (spacer) */}
         <div style={toolbarRow}>
           <label htmlFor="post-filter" style={labelStyle}>
-            Filter posts
+            Filter posts (title)
           </label>
           <input
             id="post-filter"
             type="text"
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
+            value={titleFilter}
+            onChange={(e) => setTitleFilter(e.target.value)}
             placeholder="Type to filter by title…"
             style={inputStyle}
           />
           <span />
         </div>
+
+        {/* Row 2: Jump to post */}
         <div style={{ ...toolbarRow, marginTop: 10 }}>
           <label htmlFor="post-select" style={labelStyle}>
             Jump to post
@@ -369,10 +445,73 @@ export default function Blog() {
             Go
           </button>
         </div>
+
+        {/* Row 3: NEW — Filter by date (Month) */}
+        <div style={toolbarRow2}>
+          <label htmlFor="date-select" style={labelStyle}>
+            Filter by date (month)
+          </label>
+          <select
+            id="date-select"
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+            style={selectStyle}
+          >
+            <option value="">All dates</option>
+            {dateOptions.map((opt) => (
+              <option key={opt.key} value={opt.key}>
+                {opt.label} {opt.count ? `(${opt.count})` : ""}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* ------------------ YOUR POSTS BELOW (unchanged content) ------------------ */}
 
+      {/* Blog Entry 25 */}
+      <article style={entryStyle}>
+        <h2 style={{ color: "#BF5700" }}>
+          Kevin Durant Card Prices (August 2025)
+        </h2>
+        <p>
+          Kevin Durant is a 2x NBA Champion, 2x NBA Finals MVP, 13x NBA All-Star, and was NBA Rookie of the Year. In addition, he’s a 
+          3x Olympic gold medalist.
+        </p>
+        <p>
+          Per Card Ladder, Durant’s card prices are up 650% since 2007, and over the past year prices have increased 15%.
+        </p>
+        <p>
+          Longhorn Cards and Collectibles gives Durant a Composite Rank of 81, Fundamental Rank of 81, Technical Rank of 54, and 
+          Sentiment Rank of 89 - overall a Buy rating.
+        </p>
+        <p>
+          Although the Technical Rating is around average, recently prices have started to move higher after finding long-term 
+          support subsequent to the bear market after the Covid bubble.
+        </p>
+        <p>
+          If prices are able to continue recovering towards levels achieved during the pandemic, it implies upside potential 
+          of 500% from current levels.
+        </p>
+         <img
+          src="/Durant.png"
+          alt="Durant"
+          style={imgStyle}
+          onClick={() => openImage("/Durant.png")}
+        />
+        <div style={actionsRow}>
+          <button style={openBtn} onClick={() => openPdf("/Durant.pdf")}>
+            View PDF
+          </button>
+          <a style={linkBtn} href="/Durant.pdf" download>
+            Download PDF
+          </a>
+          <a style={linkBtn} href="/Durant.png" download>
+            Download Image
+          </a>
+        </div>
+      </article>
+      
       {/* Blog Entry 24 */}
       <article style={entryStyle}>
         <h2 style={{ color: "#BF5700" }}>
@@ -501,7 +640,7 @@ export default function Blog() {
           Like many others, Wilt’s cards have been working their way through a bear market.  Recently prices have turned up, however, 
           and look to be making their way towards previous highs.
         </p>
-                <img
+        <img
           src="/Wilt.png"
           alt="Wilt"
           style={imgStyle}
