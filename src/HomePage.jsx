@@ -695,6 +695,47 @@ export default function HomePage() {
         </p>
       </section>
 
+      {/* ===== Footer: Instagram link (bottom of page) ===== */}
+      <footer
+        style={{
+          borderTop: `2px solid ${burntOrange}`,
+          marginTop: "40px",
+          paddingTop: "16px",
+          paddingBottom: "8px",
+        }}
+      >
+        <a
+          href="https://www.instagram.com/longhorncardsatx?igsh=NXhvY2c4dG1senZz&utm_source=qr"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Open @longhorncardsatx on Instagram (opens in new tab)"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "8px",
+            color: burntOrange,
+            fontWeight: "bold",
+            textDecoration: "none",
+            fontSize: "1.05rem",
+          }}
+          onMouseOver={(e) => (e.currentTarget.style.textDecoration = "underline")}
+          onMouseOut={(e) => (e.currentTarget.style.textDecoration = "none")}
+        >
+          {/* Inline Instagram icon (SVG) */}
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            aria-hidden="true"
+            focusable="false"
+          >
+            <path d="M7 2C4.243 2 2 4.243 2 7v10c0 2.757 2.243 5 5 5h10c2.757 0 5-2.243 5-5V7c0-2.757-2.243-5-5-5H7zm10 2a3 3 0 013 3v10a3 3 0 01-3 3H7a3 3 0 01-3-3V7a3 3 0 013-3h10zm-5 3a5 5 0 100 10 5 5 0 000-10zm0 2.2a2.8 2.8 0 110 5.6 2.8 2.8 0 010-5.6zM17.5 6a1 1 0 100 2 1 1 0 000-2z" />
+          </svg>
+          Follow us on Instagram @longhorncardsatx
+        </a>
+      </footer>
+
       {/* ===== Modal: Composite (Scrollable) ===== */}
       {openComposite && (
         <div
