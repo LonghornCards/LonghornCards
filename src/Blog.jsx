@@ -469,6 +469,153 @@ export default function Blog() {
 
       {/* ------------------ YOUR POSTS BELOW (unchanged content) ------------------ */}
 
+      {/* Blog Entry 29 */}
+      <article style={entryStyle}>
+        <h2 style={{ color: "#BF5700" }}>
+          Victor Wembanyama Card Prices (August 2025)
+        </h2>
+        <p>
+          “Wembamania” initially took the industry by storm, with many expecting a straight line up for prices indefinitely.  
+          However, that has not been the case so far.
+        </p>
+        <p>
+          Per Card Ladder, since 2023 card prices have fallen 82% from elevated levels, and over the past year prices are down 41%.
+        </p>
+        <p>
+          Longhorn Cards and Collectibles has assigned Wemby a Composite Rank of 80, however, which is top quartile.  
+          The Fundamental Rank and Sentiment Ranks are top quartile as well, at 80 and 83 respectively.  It’s the Technical Rank 
+          of 22 that is of concern primarily, and overall Longhorn Cards and Collectibles has a Hold rating for Wemby at this time.
+        </p>
+        <p>
+          Going forward, it does appear that most of the damage regarding falling prices is in the rear view.  In the second 
+          part of 2025 we have begun to see a turn in prices with some stabilization.  As Wemby returns to prime playing condition, 
+          it’s expected prices will recover as well.
+        </p>
+         <img
+          src="/Wemby.png"
+          alt="Wemby"
+          style={imgStyle}
+          onClick={() => openImage("/Wemby.png")}
+        />
+        <div style={actionsRow}>
+          <button style={openBtn} onClick={() => openPdf("/Wemby.pdf")}>
+            View PDF
+          </button>
+          <a style={linkBtn} href="/Wemby.pdf" download>
+            Download PDF
+          </a>
+          <a style={linkBtn} href="/Wemby.png" download>
+            Download Image
+          </a>
+        </div>
+      </article>
+      
+      {/* Blog Entry 28 */}
+      <article style={entryStyle}>
+        <h2 style={{ color: "#BF5700" }}>
+          Digital Card Brands (August 2025)
+        </h2>
+        <p>
+          This summary is a follow-up to the Digital Cards Explained blog post. 
+        </p>
+        <p>
+          There are a variety of different brands of digital cards, and each have their own unique characteristics.
+        </p>
+        <p>
+          It's important to decide what you want to purchase and then conduct due diligence on the most appropriate platform.
+        </p>
+         <img
+          src="/DigitalBrands.png"
+          alt="DigitalBrands"
+          style={imgStyle}
+          onClick={() => openImage("/DigitalBrands.png")}
+        />
+        <div style={actionsRow}>
+          <button style={openBtn} onClick={() => openPdf("/DigitalBrands.pdf")}>
+            View PDF
+          </button>
+          <a style={linkBtn} href="/DigitalBrands.pdf" download>
+            Download PDF
+          </a>
+          <a style={linkBtn} href="/DigitalBrands.png" download>
+            Download Image
+          </a>
+        </div>
+      </article>
+      
+      {/* Blog Entry 27 */}
+      <article style={entryStyle}>
+        <h2 style={{ color: "#BF5700" }}>
+          Digital Cards Explained (August 2025)
+        </h2>
+        <p>
+          This summary seeks to help explain digital and "phygital" cards that are becoming more prevalent. 
+        </p>
+        <p>
+          It's important to fully evaluate the key features and weigh the pros and cons before you decide to purchase.
+        </p>
+         <img
+          src="/Digital.png"
+          alt="Digital"
+          style={imgStyle}
+          onClick={() => openImage("/Digital.png")}
+        />
+        <div style={actionsRow}>
+          <button style={openBtn} onClick={() => openPdf("/Digital.pdf")}>
+            View PDF
+          </button>
+          <a style={linkBtn} href="/Digital.pdf" download>
+            Download PDF
+          </a>
+          <a style={linkBtn} href="/Digital.png" download>
+            Download Image
+          </a>
+        </div>
+      </article>
+      
+      {/* Blog Entry 26 */}
+      <article style={entryStyle}>
+        <h2 style={{ color: "#BF5700" }}>
+          New Highs (August 2025)
+        </h2>
+        <p>
+          These select players are setting new all-time highs in terms of card prices. 
+        </p>
+        <p>
+          Often when a new high is achieved it leads to subsequent additional new highs - momentum can be a powerful force 
+          when there is no resistance. 
+        </p>
+        <p>
+          These aren’t the only players setting new highs, but they are notable given their overall Composite ranks, 
+          per Longhorn Cards and Collectibles.
+        </p>
+        <p>
+          Michael Jordan has a 96 Composite Rank, Saquon Barkley has a 87 Composite Rank, Pete Crow-Armstrong has a 72 
+          Composite Rank, and Jared Goff has a Composite Rank of 93.
+        </p>
+        <p>
+          These above-average Composite Ranks combined with technical momentum in regard to new highs in card prices may 
+          be a powerful combination as long as fundamentals remain intact.
+        </p>
+         <img
+          src="/NewHighs.png"
+          alt="NewHighs"
+          style={imgStyle}
+          onClick={() => openImage("/NewHighs.png")}
+        />
+        <div style={actionsRow}>
+          <button style={openBtn} onClick={() => openPdf("/NewHighs.pdf")}>
+            View PDF
+          </button>
+          <a style={linkBtn} href="/NewHighs.pdf" download>
+            Download PDF
+          </a>
+          <a style={linkBtn} href="/NewHighs.png" download>
+            Download Image
+          </a>
+        </div>
+      </article>
+      
       {/* Blog Entry 25 */}
       <article style={entryStyle}>
         <h2 style={{ color: "#BF5700" }}>
