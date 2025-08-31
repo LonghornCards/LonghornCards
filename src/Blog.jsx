@@ -469,6 +469,45 @@ export default function Blog() {
 
       {/* ------------------ YOUR POSTS BELOW (unchanged content) ------------------ */}
 
+      {/* Blog Entry 30 */}
+      <article style={entryStyle}>
+        <h2 style={{ color: "#BF5700" }}>
+          To Grade or Not to Grade (August 2025)
+        </h2>
+        <p>
+          Deciding to grade a card depends on the raw card value, grading cost, probability of a perfect grade, and the 
+          expected value based on a perfect grade using a multiplier.
+        </p>
+        <p>
+          For example, PSA states a historical gem rate of 43%.  Therefore, if you expect the graded card to be twice the 
+          value of a raw card, then the minimum value of the raw card should be $46.51 – otherwise do not grade and sell raw.
+        </p>
+        <p>
+          Furthermore, if the probability drops from 43% to 30%, and the expected value for the graded card lowers to 1.5x the raw value, 
+          then you would need the raw card to have a value of at least $133.33 for grading to make sense.
+        </p>
+        <p>
+          The decision to grade or not to grade can be evaluated on a probability matrix.
+        </p>
+        <img
+          src="/GradingChoice.png"
+          alt="GradingChoice"
+          style={imgStyle}
+          onClick={() => openImage("/GradingChoice.png")}
+        />
+        <div style={actionsRow}>
+          <button style={openBtn} onClick={() => openPdf("/GradingChoice.pdf")}>
+            View PDF
+          </button>
+          <a style={linkBtn} href="/GradingChoice.pdf" download>
+            Download PDF
+          </a>
+          <a style={linkBtn} href="/GradingChoice.png" download>
+            Download Image
+          </a>
+        </div>
+      </article>
+      
       {/* Blog Entry 29 */}
       <article style={entryStyle}>
         <h2 style={{ color: "#BF5700" }}>
