@@ -469,6 +469,42 @@ export default function Blog() {
 
       {/* ------------------ YOUR POSTS BELOW (unchanged content) ------------------ */}
 
+      {/* Blog Entry 32 */}
+      <article style={entryStyle}>
+        <h2 style={{ color: "#BF5700" }}>
+          WNBA Card Price Index (August 2025)
+        </h2>
+        <p>
+          After surging past the pandemic bubble highs, the WNBA index is pulling back to support/former resistence.
+        </p>
+        <p>
+          After a retest of the pandemic level, it’s likely the WNBA index will resume its uptrend and make new all-time highs.
+        </p>
+        <p>
+          The index was essentially flat for 15+ years before breaking out around the time of the pandemic.
+        </p>
+        <p>
+          Key players leading the index include Caitlin Clark, A'Ja Wilson, Diana Taurasi, and Candace Parker.
+        </p>
+        <img
+          src="/WNBA.png"
+          alt="WNBA"
+          style={imgStyle}
+          onClick={() => openImage("/WNBA.png")}
+        />
+        <div style={actionsRow}>
+          <button style={openBtn} onClick={() => openPdf("/WNBA.pdf")}>
+            View PDF
+          </button>
+          <a style={linkBtn} href="/WNBA.pdf" download>
+            Download PDF
+          </a>
+          <a style={linkBtn} href="/WNBA.png" download>
+            Download Image
+          </a>
+        </div>
+      </article>
+      
       {/* Blog Entry 31 */}
       <article style={entryStyle}>
         <h2 style={{ color: "#BF5700" }}>
