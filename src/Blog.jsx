@@ -469,10 +469,51 @@ export default function Blog() {
 
       {/* ------------------ YOUR POSTS BELOW (unchanged content) ------------------ */}
 
+      {/* Blog Entry 31 */}
+      <article style={entryStyle}>
+        <h2 style={{ color: "#BF5700" }}>
+          To Grade or Not to Grade? Part 2. (August 2025)
+        </h2>
+        <p>
+          This is a follow-up to the first To Grade or Not to Grade piece.  
+        </p>
+        <p>
+          Using Market Movers, data was collected from 2020 through 2024 to calculate the multiple in value that is
+           unlocked by converting a Raw card to a PSA 10 graded card.
+        </p>
+        <p>
+          The calculations show the minimum Raw card price based on different brands before you should consider grading 
+          at PSA in hopes of a PSA 10.
+        </p>
+        <p>
+          Figures represent the multiple in value between Raw and PSA 10 – the value that is unlocked by grading.
+        </p>
+        <p>
+          For example, if the Raw card is $20 then a 3x multiple implies a $60 PSA 10 value.
+        </p>
+        <img
+          src="/RawtoPSA10.png"
+          alt="RawtoPSA10"
+          style={imgStyle}
+          onClick={() => openImage("/RawtoPSA10.png")}
+        />
+        <div style={actionsRow}>
+          <button style={openBtn} onClick={() => openPdf("/RawtoPSA10.pdf")}>
+            View PDF
+          </button>
+          <a style={linkBtn} href="/RawtoPSA10.pdf" download>
+            Download PDF
+          </a>
+          <a style={linkBtn} href="/RawtoPSA10.png" download>
+            Download Image
+          </a>
+        </div>
+      </article>
+      
       {/* Blog Entry 30 */}
       <article style={entryStyle}>
         <h2 style={{ color: "#BF5700" }}>
-          To Grade or Not to Grade (August 2025)
+          To Grade or Not to Grade? (August 2025)
         </h2>
         <p>
           Deciding to grade a card depends on the raw card value, grading cost, probability of a perfect grade, and the 
