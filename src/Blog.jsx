@@ -469,6 +469,43 @@ export default function Blog() {
 
       {/* ------------------ YOUR POSTS BELOW (unchanged content) ------------------ */}
 
+      {/* Blog Entry 35 */}
+      <article style={entryStyle}>
+        <h2 style={{ color: "#BF5700" }}>
+          Understanding Comps (September 2025)
+        </h2>
+        <p>
+          Comps are a useful starting point because they show real money exchanging hands.
+        </p>
+        <p>
+          However, they’re insufficient because they miss broader context (e.g. trends, fundamentals, scarcity, sentiment).
+        </p>
+        <p>
+          To get true value, comps should be combined with averages, population data, fundamentals, technical trends, collector demand, 
+          and other key items.
+        </p>
+        <p>
+          This summary is intended to help provide an understanding of comps for both buyers and sellers.
+        </p>
+        <img
+          src="/Comps.png"
+          alt="SeasCompsonal"
+          style={imgStyle}
+          onClick={() => openImage("/Comps.png")}
+        />
+        <div style={actionsRow}>
+          <button style={openBtn} onClick={() => openPdf("/Comps.pdf")}>
+            View PDF
+          </button>
+          <a style={linkBtn} href="/Comps.pdf" download>
+            Download PDF
+          </a>
+          <a style={linkBtn} href="/Comps.png" download>
+            Download Image
+          </a>
+        </div>
+      </article>
+      
       {/* Blog Entry 34 */}
       <article style={entryStyle}>
         <h2 style={{ color: "#BF5700" }}>
