@@ -469,6 +469,88 @@ export default function Blog() {
 
       {/* ------------------ YOUR POSTS BELOW (unchanged content) ------------------ */}
 
+      {/* Blog Entry 34 */}
+      <article style={entryStyle}>
+        <h2 style={{ color: "#BF5700" }}>
+          Seasonal Patterns w/ Buying & Selling (August 2025)
+        </h2>
+        <p>
+          Per Cllct, the card market has a long cyclical history that savvy collectors can use to their advantage.
+        </p>
+        <p>
+          There are clear buying and selling seasons across major sports that both buyers and sellers can leverage.
+        </p>
+        <p>
+          Prices are often highest during the season when players are performing well, and lowest during the offseason when 
+          they aren’t active at all.
+        </p>
+        <p>
+          This cycle means savvy collectors should only buy during the offseason and only sell during the season.
+        </p>
+        <p>
+          Viewing transactions for some of the more popular cards shows the ebb and flows of a given market just by the date 
+          on the calendar, for example Patrick Mahomes.
+        </p>
+        <img
+          src="/Seasonal.png"
+          alt="Seasonal"
+          style={imgStyle}
+          onClick={() => openImage("/Seasonal.png")}
+        />
+        <div style={actionsRow}>
+          <button style={openBtn} onClick={() => openPdf("/Seasonal.pdf")}>
+            View PDF
+          </button>
+          <a style={linkBtn} href="/Seasonal.pdf" download>
+            Download PDF
+          </a>
+          <a style={linkBtn} href="/Seasonal.png" download>
+            Download Image
+          </a>
+        </div>
+      </article>
+      
+      {/* Blog Entry 33 */}
+      <article style={entryStyle}>
+        <h2 style={{ color: "#BF5700" }}>
+          Corbin Carroll Card Prices (August 2025)
+        </h2>
+        <p>
+          Corbin Carroll made history as the first rookie ever to post 10+ triples, 25+ doubles, 25+ home runs, and 50+ 
+          stolen bases in a single season.  He has continued to outperform and expectations are high for a lengthy successful career.
+        </p>
+        <p>
+          Per Card Ladder, Corbin’s card prices have appreciated 273% since 2020, and prices are up 77% over the past year. 
+           Currently the technical pattern is shaping up to be an inverse head and shoulders, which historically has led to strong future price movements.
+        </p>
+        <p>
+          Longhorn Cards and Collectibles currently has a Hold rating for Corbin, with a Composite Rank of 56, Fundamental 
+          Rank of 57, Technical Rank of 77, and Sentiment Rank of 37 - which reflects that he continues to fly under the radar 
+          from a broad public perspective.
+        </p>
+        <p>
+          Going forward Longhorn Cards and Collectibles believes the positive card price momentum will continue along with 
+          above-average fundamentals and improving sentiment.  The bullish chart pattern suggests around a 60% return over the medium term.
+        </p>
+        <img
+          src="/Corbin.png"
+          alt="Corbin"
+          style={imgStyle}
+          onClick={() => openImage("/Corbin.png")}
+        />
+        <div style={actionsRow}>
+          <button style={openBtn} onClick={() => openPdf("/Corbin.pdf")}>
+            View PDF
+          </button>
+          <a style={linkBtn} href="/Corbin.pdf" download>
+            Download PDF
+          </a>
+          <a style={linkBtn} href="/Corbin.png" download>
+            Download Image
+          </a>
+        </div>
+      </article>
+      
       {/* Blog Entry 32 */}
       <article style={entryStyle}>
         <h2 style={{ color: "#BF5700" }}>
