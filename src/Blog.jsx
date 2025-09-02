@@ -469,6 +469,41 @@ export default function Blog() {
 
       {/* ------------------ YOUR POSTS BELOW (unchanged content) ------------------ */}
 
+      {/* Blog Entry 40 */}
+      <article style={entryStyle}>
+        <h2 style={{ color: "#BF5700" }}>
+          Arena Club Overview (September 2025)
+        </h2>
+        <p>
+          Arena Club is designed as a digital-first sports card marketplace and grading platform, built around a modern 
+          digital “vault” experience that connects collectors globally.
+        </p>
+        <p>
+          The company was launched in 2022, co-founded by Derek Jeter, bringing mainstream visibility and credibility to the hobby.
+        </p>
+        <p>
+          Collectors can submit cards for digitization or buy directly through the marketplace, with the physical “twin” securely 
+          vaulted — introducing “Phygital cards” that merge physical ownership with digital access.
+        </p>
+        <img
+          src="/ArenaClub.png"
+          alt="ArenaClub"
+          style={imgStyle}
+          onClick={() => openImage("/ArenaClub.png")}
+        />
+        <div style={actionsRow}>
+          <button style={openBtn} onClick={() => openPdf("/ArenaClub.pdf")}>
+            View PDF
+          </button>
+          <a style={linkBtn} href="/ArenaClub.pdf" download>
+            Download PDF
+          </a>
+          <a style={linkBtn} href="/ArenaClub.png" download>
+            Download Image
+          </a>
+        </div>
+      </article>
+      
       {/* Blog Entry 39 */}
       <article style={entryStyle}>
         <h2 style={{ color: "#BF5700" }}>
