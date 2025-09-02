@@ -469,6 +469,142 @@ export default function Blog() {
 
       {/* ------------------ YOUR POSTS BELOW (unchanged content) ------------------ */}
 
+      {/* Blog Entry 39 */}
+      <article style={entryStyle}>
+        <h2 style={{ color: "#BF5700" }}>
+          August One-of-One Card Sales:  Superfractors & Gold Vinyl (September 2025)
+        </h2>
+        <p>
+          This is a list of the top 10 sales over $10,000 for Superfractors and Gold Vinyl, which are one-of-one sports card parallels.
+        </p>
+        <p>
+          Cooper Flagg took the top spot within superfractors for his $94,000 McDonald's All-American Superfractor, graded PSA 10.
+        </p>
+        <p>
+          Josh Allen led the gold vinyl group with a $104,000 sale for his Contenders Optic autographed rookie graded PSA 9.
+        </p>
+        <img
+          src="/OneofOnes.png"
+          alt="OneofOnes"
+          style={imgStyle}
+          onClick={() => openImage("/OneofOnes.png")}
+        />
+        <div style={actionsRow}>
+          <button style={openBtn} onClick={() => openPdf("/OneofOnes.pdf")}>
+            View PDF
+          </button>
+          <a style={linkBtn} href="/OneofOnes.pdf" download>
+            Download PDF
+          </a>
+          <a style={linkBtn} href="/OneofOnes.png" download>
+            Download Image
+          </a>
+        </div>
+      </article>
+      
+      {/* Blog Entry 38 */}
+      <article style={entryStyle}>
+        <h2 style={{ color: "#BF5700" }}>
+          GemRate Update Through August 2025 (September 2025)
+        </h2>
+        <p>
+          Excluding TCG, PSA once again led in terms of total items graded, but CGC increased the most YoY by a wide margin (+68%).
+        </p>
+        <p>
+          The most graded sports player was Jayden Daniels and in a distant second was Michael Jordan.
+        </p>
+        <img
+          src="/GemRate.png"
+          alt="GemRate"
+          style={imgStyle}
+          onClick={() => openImage("/GemRate.png")}
+        />
+        <div style={actionsRow}>
+          <button style={openBtn} onClick={() => openPdf("/GemRate.pdf")}>
+            View PDF
+          </button>
+          <a style={linkBtn} href="/GemRate.pdf" download>
+            Download PDF
+          </a>
+          <a style={linkBtn} href="/GemRate.png" download>
+            Download Image
+          </a>
+        </div>
+      </article>
+      
+      {/* Blog Entry 37 */}
+      <article style={entryStyle}>
+        <h2 style={{ color: "#BF5700" }}>
+          Tom Brady Profile (September 2025)
+        </h2>
+        <p>
+          Tom Brady is a 7x Super Bowl champion, 5x Super Bowl MVP, and 3x NFL MVP, and he finished his career completing 64% of 
+          passes with 266 yards per game and 7.4 yards per attempt.
+        </p>
+        <p>
+          Per Card Ladder, Brady’s cards have returned 7651% since 2004, and over the past year prices are up 17%.
+        </p>
+        <p>
+          At this time, card prices are sitting on long-term support and have recently turned higher - if prices reach the pandemic 
+          levels it implies a 2x return from current levels.
+        </p>
+        <p>
+          Longhorn Cards and Collectibles rates Tom Brady as a Buy with a Composite Rank of 89, Fundamental Rank of 92, Technical Rank of 68 (but improving), and Sentiment Rank of 89.
+        </p>
+        <img
+          src="/Brady.png"
+          alt="Brady"
+          style={imgStyle}
+          onClick={() => openImage("/Brady.png")}
+        />
+        <div style={actionsRow}>
+          <button style={openBtn} onClick={() => openPdf("/Brady.pdf")}>
+            View PDF
+          </button>
+          <a style={linkBtn} href="/Brady.pdf" download>
+            Download PDF
+          </a>
+          <a style={linkBtn} href="/Brady.png" download>
+            Download Image
+          </a>
+        </div>
+      </article>
+      
+      {/* Blog Entry 36 */}
+      <article style={entryStyle}>
+        <h2 style={{ color: "#BF5700" }}>
+          Million Dollar Transactions (September 2025)
+        </h2>
+        <p>
+          Per Cllct and Card Ladder, August was a record month for card sales - setting an industry record for the third month in a row.
+        </p>
+        <p>
+          Card Ladder data shows over $416 million in card sales with more than 5.87 million transactions, which is also a new high.  eBay 
+          was the largest contributor to sales volume at $301 million.
+        </p>
+        <p>
+          Furthermore, August also witnessed the largest number of million dollar transactions - including the record-breaking Kobe 
+          Bryant/Michael Jordan Logoman sale of $13M.
+        </p>
+        <img
+          src="/Million.png"
+          alt="Million"
+          style={imgStyle}
+          onClick={() => openImage("/Million.png")}
+        />
+        <div style={actionsRow}>
+          <button style={openBtn} onClick={() => openPdf("/Million.pdf")}>
+            View PDF
+          </button>
+          <a style={linkBtn} href="/Million.pdf" download>
+            Download PDF
+          </a>
+          <a style={linkBtn} href="/Million.png" download>
+            Download Image
+          </a>
+        </div>
+      </article>
+      
       {/* Blog Entry 35 */}
       <article style={entryStyle}>
         <h2 style={{ color: "#BF5700" }}>
@@ -489,7 +625,7 @@ export default function Blog() {
         </p>
         <img
           src="/Comps.png"
-          alt="SeasCompsonal"
+          alt="Comps"
           style={imgStyle}
           onClick={() => openImage("/Comps.png")}
         />
