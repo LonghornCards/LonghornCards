@@ -469,6 +469,42 @@ export default function Blog() {
 
       {/* ------------------ YOUR POSTS BELOW (unchanged content) ------------------ */}
 
+      {/* Blog Entry 41 */}
+      <article style={entryStyle}>
+        <h2 style={{ color: "#BF5700" }}>
+          Index Comparison: Baseball vs. Football vs. Basketball (September 2025)
+        </h2>
+        <p>
+          The Card Ladder indexes for Baseball, Football, and Basketball are all primed for significant moves higher, and there is an 
+          overall bullish tone to the sports card market with surging transaction volumes.
+        </p>
+        <p>
+          The WNBA index is testing support after hitting a new high, while the NFL, NBA, and MLB indexes are looking to challenge 
+          the pandemic levels and break out to new all-time highs.
+        </p>
+        <p>
+          The Football index is targeting 56% upside, Basketball 65%, WNBA 85%, and Baseball 10% - with supportive volume, these targets appear
+          reasonable over the medium term as a variety of other indexes and player indexes have already surpassed their pandemic highs.
+        </p>
+        <img
+          src="/Indexes.png"
+          alt="Indexes"
+          style={imgStyle}
+          onClick={() => openImage("/Indexes.png")}
+        />
+        <div style={actionsRow}>
+          <button style={openBtn} onClick={() => openPdf("/Indexes.pdf")}>
+            View PDF
+          </button>
+          <a style={linkBtn} href="/Indexes.pdf" download>
+            Download PDF
+          </a>
+          <a style={linkBtn} href="/Indexes.png" download>
+            Download Image
+          </a>
+        </div>
+      </article>
+      
       {/* Blog Entry 40 */}
       <article style={entryStyle}>
         <h2 style={{ color: "#BF5700" }}>
