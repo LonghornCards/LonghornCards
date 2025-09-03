@@ -469,6 +469,73 @@ export default function Blog() {
 
       {/* ------------------ YOUR POSTS BELOW (unchanged content) ------------------ */}
 
+      {/* Blog Entry 42 */}
+      <article style={entryStyle}>
+        <h2 style={{ color: "#BF5700" }}>
+          Cody Bellinger Profile (September 2025)
+        </h2>
+        <p>
+          Per Card Ladder, Cody’s card prices have returned 801% since 2016, and prices are up 10% over the past year.  Prices are 
+          sitting on long-term support and edging higher.
+        </p>
+        <p>
+          Longhorn Cards and Collectibles has a Buy rating for Cody, with a Composite Rank of 53, Fundamental Rank of 45, Technical Rank of 
+          57, and Sentiment Rank of 53.
+        </p>
+         <img
+          src="/Cody.png"
+          alt="Cody"
+          style={imgStyle}
+          onClick={() => openImage("/Cody.png")}
+        />
+        <div style={actionsRow}>
+          <button style={openBtn} onClick={() => openPdf("/Cody.pdf")}>
+            View PDF
+          </button>
+          <a style={linkBtn} href="/Cody.pdf" download>
+            Download PDF
+          </a>
+          <a style={linkBtn} href="/Cody.png" download>
+            Download Image
+          </a>
+        </div>
+      </article>
+      
+      {/* Blog Entry 42 */}
+      <article style={entryStyle}>
+        <h2 style={{ color: "#BF5700" }}>
+          Nikola Jokic Profile (September 2025)
+        </h2>
+        <p>
+          Per Card Ladder, Jokic’s card prices have been going pretty much straight up, with a return of 4146% since 2016 and 
+          16% over the past year.
+        </p>
+        <p>
+          Longhorn Cards and Collectibles has a Buy rating given a Composite Rank of 89, Fundamental Rank of  100, Technical Rank of 57,
+           and Sentiment Rank of 89.
+        </p>
+        <p>
+          Jokic is an NBA Champion, NBA Finals MVP, 3x NBA MVP, and 7x NBA All-Star, and card prices show how dominant and consistent he’s been and will continue to be.
+        </p>
+        <img
+          src="/Jokic.png"
+          alt="Jokic"
+          style={imgStyle}
+          onClick={() => openImage("/Jokic.png")}
+        />
+        <div style={actionsRow}>
+          <button style={openBtn} onClick={() => openPdf("/Jokic.pdf")}>
+            View PDF
+          </button>
+          <a style={linkBtn} href="/Jokic.pdf" download>
+            Download PDF
+          </a>
+          <a style={linkBtn} href="/Jokic.png" download>
+            Download Image
+          </a>
+        </div>
+      </article>
+      
       {/* Blog Entry 41 */}
       <article style={entryStyle}>
         <h2 style={{ color: "#BF5700" }}>
