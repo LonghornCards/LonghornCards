@@ -472,6 +472,39 @@ export default function Blog() {
       {/* Blog Entry 43 */}
       <article style={entryStyle}>
         <h2 style={{ color: "#BF5700" }}>
+          Ted Williams Profile (September 2025)
+        </h2>
+        <p>
+          Ted Williams is considered one of the best hitters of all time.  He finished with a .344 batting average, .482 on base percentage, and 521 career home runs.  In addition, he was the last person to hit over .400 in a season.
+        </p>
+        <p>
+          Longhorn Cards and Collectibles has a Hold rating for Ted at the moment, and assigns a Composite Rank of 57, Fundamental Rank of 90, Technical Rank of 48, and Sentiment Rank of 14.
+        </p>
+        <p>
+          Per Card Ladder, Ted’s card prices have returned 380% since 2003 and 17% over the past year - currently, prices are in spitting distance of making new all-time highs - they have already surpassed the pandemic levels.
+       </p>
+         <img
+          src="/Ted.png"
+          alt="Ted"
+          style={imgStyle}
+          onClick={() => openImage("/Ted.png")}
+        />
+        <div style={actionsRow}>
+          <button style={openBtn} onClick={() => openPdf("/Ted.pdf")}>
+            View PDF
+          </button>
+          <a style={linkBtn} href="/Ted.pdf" download>
+            Download PDF
+          </a>
+          <a style={linkBtn} href="/Ted.png" download>
+            Download Image
+          </a>
+        </div>
+      </article>
+      
+      {/* Blog Entry 43 */}
+      <article style={entryStyle}>
+        <h2 style={{ color: "#BF5700" }}>
           PSA Grade Index Comparison (September 2025)
         </h2>
         <p>
