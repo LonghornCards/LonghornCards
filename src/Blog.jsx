@@ -469,6 +469,48 @@ export default function Blog() {
 
       {/* ------------------ YOUR POSTS BELOW (unchanged content) ------------------ */}
 
+      {/* Blog Entry 43 */}
+      <article style={entryStyle}>
+        <h2 style={{ color: "#BF5700" }}>
+          PSA Grade Index Comparison (September 2025)
+        </h2>
+        <p>
+          This graph compares cards prices for PSA 10, 9, 8 and 7 for Football cards over $50 from 2000 to Present.
+        </p>
+        <p>
+          PSA 9’s are leading the pack over the YTD and 1-year periods, but PSA 7’s offer the most upside to their pandemic highs.
+        </p>
+        <p>
+          Over the past year, PSA 10’s are up 15%, PSA 9’s 43%, PSA 8’s -1%, and PSA 7’s 15%.
+        </p>
+        <p>
+          It’s interesting that PSA 7’s have returned the same as PSA 10’s, and that PSA 8’s are negative while the others are strongly positive.
+        </p>
+        <p>
+          In terms of upside, PSA 10’s offer 60% upside on average, PSA 9’s 31%, PSA 8’s 114%, and PSA 7’s 155%.
+        </p>
+        <p>
+          With so many indexes and players surpassing pandemic levels, this upside simply reflects the percentage change needed to recover pandemic high levels.
+        </p>
+         <img
+          src="/PSAGrades.png"
+          alt="PSAGrades"
+          style={imgStyle}
+          onClick={() => openImage("/PSAGrades.png")}
+        />
+        <div style={actionsRow}>
+          <button style={openBtn} onClick={() => openPdf("/PSAGrades.pdf")}>
+            View PDF
+          </button>
+          <a style={linkBtn} href="/PSAGrades.pdf" download>
+            Download PDF
+          </a>
+          <a style={linkBtn} href="/PSAGrades.png" download>
+            Download Image
+          </a>
+        </div>
+      </article>
+      
       {/* Blog Entry 42 */}
       <article style={entryStyle}>
         <h2 style={{ color: "#BF5700" }}>
