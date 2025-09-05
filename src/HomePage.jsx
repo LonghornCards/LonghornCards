@@ -299,7 +299,7 @@ export default function HomePage() {
           Home
         </Link>
 
-        {/* ✅ New Feeds link */}
+        {/* ✅ Feeds link */}
         <Link
           to="/feeds"
           style={{
@@ -312,18 +312,7 @@ export default function HomePage() {
           Feeds
         </Link>
 
-        {/* ✅ New News link */}
-        <Link
-          to="/news"
-          style={{
-            textDecoration: "none",
-            color: burntOrange,
-            fontWeight: "bold",
-            fontSize: "1.1rem",
-          }}
-        >
-          News
-        </Link>
+        {/* 🚫 News link removed */}
 
         <Link
           to="/history"
@@ -349,7 +338,7 @@ export default function HomePage() {
           Research
         </Link>
 
-        {/* ✅ New Blog link (placed next to Research) */}
+        {/* ✅ Blog link (next to Research) */}
         <Link
           to="/blog"
           style={{
@@ -1388,7 +1377,6 @@ export default function HomePage() {
                   borderRadius: "8px",
                   padding: "10px 14px",
                   fontWeight: "bold",
-                  cursor: "pointer",
                 }}
               >
                 Close
