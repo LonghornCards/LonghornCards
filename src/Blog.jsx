@@ -469,13 +469,49 @@ export default function Blog() {
 
       {/* ------------------ YOUR POSTS BELOW (unchanged content) ------------------ */}
 
+      {/* Blog Entry 45 */}
+      <article style={entryStyle}>
+        <h2 style={{ color: "#BF5700" }}>
+          Grading Company Comparison (September 2025)
+        </h2>
+        <p>
+          This is a summary of the top-, mid-, and lower-tier grading companies based on standard prices and turnaround times.
+        </p>
+        <p>
+          Note that each company also offers different pricing options and turnaround times, so this data just reflects the base terms.
+        </p>
+        <p>
+          A key takeaway is that PSA enjoys a bit of a moat in terms of offering higher prices and longer turnaround times, while still attracting a majority of the business.
+       </p>
+       <p>
+        However, the success of new entrant CGC shows that market share isn’t a permanent thing, and other companies could soon chip away at PSA as well - creating a more even distribution of grading choices that offer higher resale value potential like PSA.
+       </p>
+         <img
+          src="/GradingCompaniesScatter.png"
+          alt="GradingCompaniesScatter"
+          style={imgStyle}
+          onClick={() => openImage("/GradingCompaniesScatter.png")}
+        />
+        <div style={actionsRow}>
+          <button style={openBtn} onClick={() => openPdf("/GradingCompaniesScatter.pdf")}>
+            View PDF
+          </button>
+          <a style={linkBtn} href="/GradingCompaniesScatter.pdf" download>
+            Download PDF
+          </a>
+          <a style={linkBtn} href="/GradingCompaniesScatter.png" download>
+            Download Image
+          </a>
+        </div>
+      </article>
+      
       {/* Blog Entry 44 */}
       <article style={entryStyle}>
         <h2 style={{ color: "#BF5700" }}>
           CGC Overview (September 2025)
         </h2>
         <p>
-          Founded in 2000, Certified Guaranty Company (CGC) has certified more than 15 million collectibles across multiple categories
+          Founded in 2000, Certified Guaranty Company (CGC) has certified more than 15 million collectibles across multiple categories.
         </p>
         <p>
           They are a newer entrant to the trading card grading industry compared to PSA, BGS, and SGC.
