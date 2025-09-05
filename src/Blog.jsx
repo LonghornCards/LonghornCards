@@ -469,6 +469,39 @@ export default function Blog() {
 
       {/* ------------------ YOUR POSTS BELOW (unchanged content) ------------------ */}
 
+      {/* Blog Entry 44 */}
+      <article style={entryStyle}>
+        <h2 style={{ color: "#BF5700" }}>
+          CGC Overview (September 2025)
+        </h2>
+        <p>
+          Founded in 2000, Certified Guaranty Company (CGC) has certified more than 15 million collectibles across multiple categories
+        </p>
+        <p>
+          They are a newer entrant to the trading card grading industry compared to PSA, BGS, and SGC.
+        </p>
+        <p>
+          CGC has built a strong reputation by leveraging its experience in grading comic books magazines, and other collectibles.
+       </p>
+         <img
+          src="/CGC.png"
+          alt="CGC"
+          style={imgStyle}
+          onClick={() => openImage("/CGC.png")}
+        />
+        <div style={actionsRow}>
+          <button style={openBtn} onClick={() => openPdf("/CGC.pdf")}>
+            View PDF
+          </button>
+          <a style={linkBtn} href="/CGC.pdf" download>
+            Download PDF
+          </a>
+          <a style={linkBtn} href="/CGC.png" download>
+            Download Image
+          </a>
+        </div>
+      </article>
+      
       {/* Blog Entry 43 */}
       <article style={entryStyle}>
         <h2 style={{ color: "#BF5700" }}>
