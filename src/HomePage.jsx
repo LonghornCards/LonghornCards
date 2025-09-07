@@ -312,8 +312,6 @@ export default function HomePage() {
           Feeds
         </Link>
 
-        {/* 🚫 News link removed */}
-
         <Link
           to="/history"
           style={{
@@ -336,6 +334,19 @@ export default function HomePage() {
           }}
         >
           Research
+        </Link>
+
+        {/* ✅ NEW: Grading Companies */}
+        <Link
+          to="/grading-companies"
+          style={{
+            textDecoration: "none",
+            color: burntOrange,
+            fontWeight: "bold",
+            fontSize: "1.1rem",
+          }}
+        >
+          Grading Companies
         </Link>
 
         {/* ✅ Blog link (next to Research) */}

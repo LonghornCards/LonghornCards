@@ -64,8 +64,8 @@ const formatNum = (n) =>
 /** Excel serial date -> JS Date */
 const excelSerialToDate = (d) => {
   if (typeof d !== "number" || !isFinite(d)) return null;
-  const utcDays = Math.floor(d - 25569); // 25569 = days from 1899-12-30 to 1970-01-01
-  const theUtcSeconds = utcDays * 86400; // seconds
+  const utcDays = Math.floor(d - 25569);
+  const theUtcSeconds = utcDays * 86400;
   const dateInfo = new Date(theUtcSeconds * 1000);
   const fractionalDay = d - Math.floor(d);
   if (fractionalDay > 0) {
@@ -89,15 +89,15 @@ export default function Research() {
   // -------- Scatterplot state --------
   const [rows, setRows] = useState([]);
   const [sport, setSport] = useState("All");
-  const [status, setStatus] = useState("All"); // NEW: Status filter
+  const [status, setStatus] = useState("All");
   const [xKey, setXKey] = useState(null);
   const [yKey, setYKey] = useState(null);
   const [nameKey, setNameKey] = useState(null);
   const [sportKey, setSportKey] = useState(null);
-  const [statusKey, setStatusKey] = useState(null); // NEW: Status column key
+  const [statusKey, setStatusKey] = useState(null);
   const [numericCols, setNumericCols] = useState([]);
 
-  // Columns for modal summary (found robustly)
+  // Columns for modal summary
   const [compCol, setCompCol] = useState(null);
   const [fundCol, setFundCol] = useState(null);
   const [techCol, setTechCol] = useState(null);
@@ -113,21 +113,21 @@ export default function Research() {
   const [xDomain, setXDomain] = useState(null);
   const [yDomain, setYDomain] = useState(null);
 
-  // Box-zoom state (pointer-based = works on mouse + touch)
+  // Box-zoom state
   const [dragging, setDragging] = useState(false);
-  const [box, setBox] = useState(null); // {x0,y0,x1,y1}
+  const [box, setBox] = useState(null);
   const plotRef = useRef(null);
 
-  // Tooltip for scatter (works on tap)
-  const [tip, setTip] = useState(null); // {x,y,content}
+  // Tooltip (shared)
+  const [tip, setTip] = useState(null);
 
   // -------- Trends line chart state --------
   const [trendsRows, setTrendsRows] = useState([]);
   const [timeKey, setTimeKey] = useState(null);
-  const [seriesKeys, setSeriesKeys] = useState([]); // numeric series columns
-  const [selectedSeries, setSelectedSeries] = useState([]); // multiple selection
+  const [seriesKeys, setSeriesKeys] = useState([]);
+  const [selectedSeries, setSelectedSeries] = useState([]);
 
-  // ---------- DATA LOAD: Composite (scatter + modal) ----------
+  // ---------- DATA LOAD: Composite ----------
   useEffect(() => {
     (async () => {
       try {
@@ -140,7 +140,6 @@ export default function Research() {
 
         const cols = json.length ? Object.keys(json[0]).map((c) => String(c).trim()) : [];
 
-        // Case-insensitive column finder
         const findCol = (cands) => {
           const lc = cols.map((c) => c.toLowerCase());
           for (const cand of cands) {
@@ -159,9 +158,8 @@ export default function Research() {
           "Active/Retired",
           "PlayerStatus",
           "STATUS",
-        ]); // NEW: detect status column
+        ]);
 
-        // Robust metric columns (modal & general use)
         const compositeCol = findCol([
           "Composite Rank",
           "Composite",
@@ -199,8 +197,6 @@ export default function Research() {
           "FundChange",
           "FUNDAMENTAL CHANGE",
         ]);
-
-        // IMPORTANT: do NOT confuse "Status" (Active/Retired) with "Rating"
         const ratingDetectedCol = findCol([
           "Rating",
           "RATING",
@@ -210,23 +206,17 @@ export default function Research() {
           "Buy/Hold",
         ]);
 
-        // Detect numeric columns (for scatter X/Y dropdowns)
         const isNum = (c) => json.some((r) => r[c] !== null && r[c] !== "" && !isNaN(Number(r[c])));
         let numCols = cols.filter(isNum);
-
-        // Exclude sport/status columns if they look numeric-coded
         if (guessedSport) numCols = numCols.filter((c) => c !== guessedSport);
         if (guessedStatus) numCols = numCols.filter((c) => c !== guessedStatus);
-
-        // Exclude specific fields from X/Y dropdowns
         const excludedLC = new Set(
           ["3-Mo Ret", "12-Mo Ret", "3mo RS", "12mo RS", "Fundamental Change"].map((s) =>
             s.toLowerCase()
           )
         );
-        numCols = numCols.filter((c) => !excludedLC.has(c.toLowerCase())); // keep Fundamental Change out of scatter
+        numCols = numCols.filter((c) => !excludedLC.has(c.toLowerCase()));
 
-        // Preferred defaults (only if still in numCols after exclusions)
         const prefer = (cands) => {
           const lcSet = new Set(numCols.map((c) => c.toLowerCase()));
           for (const k of cands) {
@@ -248,8 +238,6 @@ export default function Research() {
 
         let x = preferredX;
         let y = preferredY;
-
-        // Fallback to first two numeric columns if needed or if x === y
         if (!x || !y || x === y) {
           const [c1, c2] = numCols.slice(0, 2);
           if (!x) x = c1 || null;
@@ -259,12 +247,11 @@ export default function Research() {
         setRows(json);
         setNameKey(guessedName);
         setSportKey(guessedSport);
-        setStatusKey(guessedStatus); // NEW
+        setStatusKey(guessedStatus);
         setNumericCols(numCols);
         setXKey(x);
         setYKey(y);
 
-        // Set modal metric columns
         setCompCol(compositeCol);
         setFundCol(fundamentalCol);
         setTechCol(technicalCol);
@@ -297,7 +284,6 @@ export default function Research() {
 
         const cols = Object.keys(json[0]).map((c) => String(c).trim());
 
-        // find time column
         const timeGuess = (() => {
           const lc = cols.map((c) => c.toLowerCase());
           const cands = ["date", "week", "time", "period"];
@@ -305,13 +291,11 @@ export default function Research() {
             const i = lc.indexOf(c);
             if (i >= 0) return cols[i];
           }
-          // else: heuristics: if first column parses as date for many rows
           const c0 = cols[0];
           const pass = json
             .slice(0, Math.min(12, json.length))
             .filter((r) => tryParseDate(r[c0]) !== null).length;
           if (pass >= Math.min(6, json.length)) return c0;
-          // try any column that looks date-like
           for (const col of cols) {
             const ok = json
               .slice(0, Math.min(12, json.length))
@@ -321,7 +305,6 @@ export default function Research() {
           return null;
         })();
 
-        // series = numeric columns except time
         const isNumCol = (c) =>
           json.some((r) => r[c] !== null && r[c] !== "" && !isNaN(Number(r[c])));
         let sKeys = cols.filter((c) => c !== timeGuess && isNumCol(c));
@@ -329,12 +312,7 @@ export default function Research() {
         setTrendsRows(json);
         setTimeKey(timeGuess);
         setSeriesKeys(sKeys);
-
-        // choose up to first 3 as default
-        setSelectedSeries((prev) => {
-          if (prev && prev.length) return prev;
-          return sKeys.slice(0, Math.min(3, sKeys.length));
-        });
+        setSelectedSeries((prev) => (prev && prev.length ? prev : sKeys.slice(0, Math.min(3, sKeys.length))));
       } catch (e) {
         console.error(e);
         setTrendsRows([]);
@@ -356,7 +334,7 @@ export default function Research() {
     return Array.from(set).sort((a, b) => a.localeCompare(b));
   }, [rows, nameKey]);
 
-  // Summary for selected player (averages if multiple rows found)
+  // Summary for selected player
   const playerSummary = useMemo(() => {
     if (!selectedPlayer || !nameKey) return null;
     const list = rows.filter(
@@ -377,17 +355,13 @@ export default function Research() {
         .map((r) => (r[ratingCol] == null ? "" : String(r[ratingCol]).trim()))
         .filter((v) => v !== "");
       if (!vals.length) return null;
-
-      // normalize to Buy/Hold (case-insensitive, allow abbreviations)
       const norm = (s) => {
         const t = s.toLowerCase();
         if (t === "buy" || t === "b") return "Buy";
         if (t === "hold" || t === "h") return "Hold";
-        return s; // fall back to whatever is in file
-        };
+        return s;
+      };
       const normalized = vals.map(norm);
-
-      // frequency count
       const freq = {};
       for (const v of normalized) freq[v] = (freq[v] || 0) + 1;
       let best = normalized[0],
@@ -398,7 +372,6 @@ export default function Research() {
           bestCount = freq[k];
         }
       }
-      // As a tie-break, prefer "Buy" over "Hold" if equal frequency
       if (freq["Buy"] === freq["Hold"] && freq["Buy"] != null) return "Buy";
       return best;
     };
@@ -417,9 +390,8 @@ export default function Research() {
   // ===== Scatterplot computations =====
   const filtered = useMemo(() => {
     if (!rows.length) return [];
-
-    // 1) Sport filter
     let out = rows;
+
     if (sportKey && sport !== "All") {
       out = out.filter((r) => {
         const v = (r[sportKey] ?? "").toString().toLowerCase();
@@ -430,39 +402,24 @@ export default function Research() {
       });
     }
 
-    // 2) Status filter (NEW)
     if (statusKey && status !== "All") {
-      const pick = status.toLowerCase(); // "active" or "retired"
+      const pick = status.toLowerCase();
       out = out.filter((r) => {
         const raw = (r[statusKey] ?? "").toString().toLowerCase();
-
-        // common positive signals
         const isActive =
           raw.includes("active") ||
           raw.includes("current") ||
           raw.includes("playing") ||
           raw.includes("rookie") ||
           raw.includes("prospect");
-
         const isRetired =
           raw.includes("retired") ||
           raw.includes("former") ||
-          raw.includes("hall") || // "Hall of Fame", "HOF"
+          raw.includes("hall") ||
           raw.includes("hof") ||
           raw.includes("inactive");
-
-        if (pick === "active") {
-          // If the column is noisy/mixed, prefer explicit "active" signals
-          if (isActive) return true;
-          if (isRetired) return false;
-          // fallback heuristic: if no signals, keep the row (avoid over-filtering)
-          return false;
-        }
-        if (pick === "retired") {
-          if (isRetired) return true;
-          if (isActive) return false;
-          return false;
-        }
+        if (pick === "active") return isActive;
+        if (pick === "retired") return isRetired;
         return true;
       });
     }
@@ -703,10 +660,111 @@ export default function Research() {
 
   const smallScreen = S_WIDTH < 520;
 
+  // ======== HEATMAP (new) ========
+
+  // Build aggregated per-player rows (respect sport/status filters)
+  const heatBase = useMemo(() => {
+    if (!filtered.length || !nameKey) return [];
+    const acc = new Map();
+    for (const r of filtered) {
+      const name = String(r[nameKey] ?? "").trim();
+      if (!name) continue;
+      const c = compCol ? Number(r[compCol]) : NaN;
+      const f = fundCol ? Number(r[fundCol]) : NaN;
+      const t = techCol ? Number(r[techCol]) : NaN;
+      const s = sentCol ? Number(r[sentCol]) : NaN;
+
+      if (!acc.has(name)) acc.set(name, { n: 0, cSum: 0, cN: 0, fSum: 0, fN: 0, tSum: 0, tN: 0, sSum: 0, sN: 0 });
+      const obj = acc.get(name);
+      obj.n += 1;
+      if (!isNaN(c)) { obj.cSum += c; obj.cN += 1; }
+      if (!isNaN(f)) { obj.fSum += f; obj.fN += 1; }
+      if (!isNaN(t)) { obj.tSum += t; obj.tN += 1; }
+      if (!isNaN(s)) { obj.sSum += s; obj.sN += 1; }
+    }
+
+    const out = [];
+    for (const [name, v] of acc.entries()) {
+      out.push({
+        player: name,
+        composite: v.cN ? v.cSum / v.cN : null,
+        fundamental: v.fN ? v.fSum / v.fN : null,
+        technical: v.tN ? v.tSum / v.tN : null,
+        sentiment: v.sN ? v.sSum / v.sN : null,
+      });
+    }
+    return out;
+  }, [filtered, nameKey, compCol, fundCol, techCol, sentCol]);
+
+  // Search + sort controls
+  const [heatSearch, setHeatSearch] = useState("");
+  const [heatSortKey, setHeatSortKey] = useState("composite");
+  const [heatSortDir, setHeatSortDir] = useState("desc");
+
+  const heatRows = useMemo(() => {
+    let arr = heatBase.slice();
+    const q = heatSearch.trim().toLowerCase();
+    if (q) arr = arr.filter((r) => r.player.toLowerCase().includes(q));
+    const k = heatSortKey;
+    arr.sort((a, b) => {
+      if (k === "player") {
+        const cmp = a.player.localeCompare(b.player, undefined, { sensitivity: "base" });
+        return heatSortDir === "asc" ? cmp : -cmp;
+      }
+      const av = a[k] == null || isNaN(a[k]) ? -Infinity : Number(a[k]);
+      const bv = b[k] == null || isNaN(b[k]) ? -Infinity : Number(b[k]);
+      return heatSortDir === "asc" ? av - bv : bv - av;
+    });
+    return arr;
+  }, [heatBase, heatSearch, heatSortKey, heatSortDir]);
+
+  const sortBy = (k) => {
+    if (k === heatSortKey) {
+      setHeatSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setHeatSortKey(k);
+      setHeatSortDir(k === "player" ? "asc" : "desc");
+    }
+  };
+
+  // Map 0..100 -> color (red -> green). Handles null as gray.
+  const heatColor = (v) => {
+    if (v == null || isNaN(v)) return { bg: "#f2f2f2", fg: "#555" };
+    const clamped = clamp(v, 0, 100);
+    const hue = (clamped / 100) * 120;
+    const bg = `hsl(${hue}, 70%, 54%)`;
+    const fg = clamped > 60 ? "#fff" : "#111";
+    return { bg, fg };
+  };
+
+  const HeatCell = ({ value }) => {
+    const val = value == null || isNaN(value) ? null : Number(value);
+    const { bg, fg } = heatColor(val);
+    return (
+      <div
+        style={{
+          background: bg,
+          color: fg,
+          fontWeight: 800,
+          borderRadius: 8,
+          padding: "6px 8px",
+          textAlign: "center",
+          minWidth: 90,
+        }}
+        title={val == null ? "N/A" : `${val.toFixed(2)}`}
+      >
+        {val == null ? "N/A" : val.toFixed(2)}
+      </div>
+    );
+  };
+
+  // NEW: height control for the scrollable heatmap
+  const [heatMaxHeight, setHeatMaxHeight] = useState(420);
+
   // ===== UI =====
   return (
     <div style={{ fontFamily: "Arial, sans-serif", padding: 16, maxWidth: 1200, margin: "0 auto" }}>
-      {/* Top Row: Back + Search Player Ranks */}
+      {/* Top Row */}
       <div
         style={{
           marginBottom: 12,
@@ -802,7 +860,7 @@ export default function Research() {
           ))}
         </div>
 
-        {/* Status toggle (NEW) */}
+        {/* Status toggle */}
         <div
           style={{
             display: "flex",
@@ -957,7 +1015,7 @@ export default function Research() {
           <line x1={SM.left} y1={SM.top + S_innerH} x2={SM.left + S_innerW} y2={SM.top + S_innerH} stroke="#999" />
           <line x1={SM.left} y1={SM.top} x2={SM.left} y2={SM.top + S_innerH} stroke="#999" />
 
-          {/* Midlines */}
+          {/* Midline */}
           <line x1={midX_px} y1={SM.top} x2={midX_px} y2={SM.top + S_innerH} stroke="#aaa" strokeDasharray="4,4" />
 
           {/* X ticks */}
@@ -1219,7 +1277,7 @@ export default function Research() {
           })}
 
           {tip && (
-            <g transform={`translate(${clamp(tip.x, TM.left + 60, TM.left + T_innerW - 60)}, ${tip.y})`}>
+            <g transform={`translate(${clamp(tip.x, TM.left + T_innerW / 2 - 60, TM.left + T_innerW / 2 + 60)}, ${tip.y})`}>
               <rect x={-110} y={-28} width={220} height={24} rx={6} ry={6} fill="rgba(0,0,0,0.75)" />
               <text x={0} y={-12} textAnchor="middle" fontSize={11} fill="#fff">
                 {tip.content}
@@ -1404,7 +1462,6 @@ export default function Research() {
                     gap: 10,
                   }}
                 >
-                  {/* Core 0..100 ranks */}
                   {[
                     ["Composite Rank", playerSummary.composite],
                     ["Fundamental Rank", playerSummary.fundamental],
@@ -1522,6 +1579,187 @@ export default function Research() {
           </div>
         </div>
       )}
+
+      {/* ======== HEATMAP TABLE (BOTTOM) ======== */}
+      <div style={{ marginTop: 24 }}>
+        <h2
+          style={{
+            color: burntOrange,
+            fontWeight: 800,
+            fontSize: "clamp(1.05rem, 3vw, 1.4rem)",
+            margin: "0 0 10px",
+            textAlign: "center",
+          }}
+        >
+          Player Heatmap — Composite • Fundamental • Technical • Sentiment
+        </h2>
+
+        {/* Controls (now includes table height picker) */}
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            marginBottom: 8,
+          }}
+        >
+          <div style={{ fontSize: 12, color: "#666" }}>
+            Showing <b>{heatRows.length}</b> players
+            {sport !== "All" ? ` • ${sport}` : ""}{status !== "All" ? ` • ${status}` : ""}
+          </div>
+
+          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+            <label style={{ fontSize: 12, color: "#666" }}>Table height:</label>
+            <select
+              value={heatMaxHeight}
+              onChange={(e) => setHeatMaxHeight(Number(e.target.value))}
+              style={{ padding: "6px 8px", borderRadius: 8, border: "1px solid #ccc" }}
+              title="Adjust visible table height"
+            >
+              <option value={280}>Short</option>
+              <option value={420}>Medium</option>
+              <option value={560}>Tall</option>
+            </select>
+
+            <input
+              value={heatSearch}
+              onChange={(e) => setHeatSearch(e.target.value)}
+              placeholder="Search players…"
+              style={{
+                flex: "1 1 240px",
+                minWidth: 220,
+                maxWidth: 360,
+                padding: "8px 10px",
+                borderRadius: 8,
+                border: "1px solid #ccc",
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Scrollable container (X + Y) with sticky header and sticky first column */}
+        <div
+          style={{
+            border: "1px solid #eee",
+            borderRadius: 12,
+            background: "#fff",
+            overflow: "hidden",
+          }}
+        >
+          {/* Inner scroller adds vertical condense */}
+          <div
+            style={{
+              maxHeight: heatMaxHeight,
+              overflow: "auto", // both x and y
+              WebkitOverflowScrolling: "touch",
+            }}
+          >
+            <table
+              style={{
+                borderCollapse: "separate",
+                borderSpacing: 8,
+                width: "100%",
+                minWidth: 720,
+              }}
+            >
+              <thead>
+                <tr>
+                  {[
+                    { key: "player", label: "Player", isMetric: false },
+                    { key: "composite", label: "Composite Rank", isMetric: true },
+                    { key: "fundamental", label: "Fundamental Rank", isMetric: true },
+                    { key: "technical", label: "Technical Rank", isMetric: true },
+                    { key: "sentiment", label: "Sentiment Rank", isMetric: true },
+                  ].map((col, idx) => {
+                    const active = heatSortKey === col.key;
+                    const stickyBase = {
+                      position: "sticky",
+                      top: 0,
+                      background: "#fafafa",
+                      zIndex: 2, // above cells
+                      fontSize: 13,
+                      padding: "10px 8px",
+                      borderBottom: "1px solid #eee",
+                      cursor: "pointer",
+                      whiteSpace: "nowrap",
+                    };
+                    // Make the first header also sticky to the left for horizontal scroll
+                    if (col.key === "player") {
+                      stickyBase.left = 0;
+                      stickyBase.zIndex = 3; // over other headers
+                    }
+                    return (
+                      <th
+                        key={col.key}
+                        onClick={() => sortBy(col.key)}
+                        style={{
+                          ...stickyBase,
+                          textAlign: col.isMetric ? "center" : "left",
+                        }}
+                        title="Click to sort"
+                      >
+                        <span style={{ color: "#333", fontWeight: 800 }}>
+                          {col.label}
+                          {active ? (heatSortDir === "asc" ? " ▲" : " ▼") : ""}
+                        </span>
+                      </th>
+                    );
+                  })}
+                </tr>
+              </thead>
+              <tbody>
+                {heatRows.map((r) => (
+                  <tr key={r.player}>
+                    {/* Sticky first column so names stay visible while scrolling horizontally */}
+                    <td
+                      style={{
+                        padding: "4px 8px",
+                        fontWeight: 800,
+                        color: "#222",
+                        whiteSpace: "nowrap",
+                        position: "sticky",
+                        left: 0,
+                        background: "#fff",
+                        zIndex: 1,
+                      }}
+                    >
+                      {r.player}
+                    </td>
+                    <td style={{ padding: "4px 4px" }}>
+                      <HeatCell value={r.composite} />
+                    </td>
+                    <td style={{ padding: "4px 4px" }}>
+                      <HeatCell value={r.fundamental} />
+                    </td>
+                    <td style={{ padding: "4px 4px" }}>
+                      <HeatCell value={r.technical} />
+                    </td>
+                    <td style={{ padding: "4px 4px" }}>
+                      <HeatCell value={r.sentiment} />
+                    </td>
+                  </tr>
+                ))}
+                {heatRows.length === 0 && (
+                  <tr>
+                    <td colSpan={5} style={{ padding: 12, color: "#666", textAlign: "center" }}>
+                      {(!compCol || !fundCol || !techCol || !sentCol)
+                        ? "Required rank columns not found in the data."
+                        : "No players match the current filters."}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div style={{ marginTop: 8, fontSize: 12, color: "#666", textAlign: "center" }}>
+          Scroll inside the table to see more rows. Headers and player names stay pinned while you scroll.
+        </div>
+      </div>
+      {/* ======== /HEATMAP TABLE ======== */}
     </div>
   );
 }

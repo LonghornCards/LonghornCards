@@ -469,6 +469,42 @@ export default function Blog() {
 
       {/* ------------------ YOUR POSTS BELOW (unchanged content) ------------------ */}
 
+      {/* Blog Entry 46 */}
+      <article style={entryStyle}>
+        <h2 style={{ color: "#BF5700" }}>
+          Charting Important Factors (September 2025)
+        </h2>
+        <p>
+          There is a close relationship between card values, player fundamentals (statistics), and sentiment (Google Trends).
+        </p>
+        <p>
+          In this example, as the card values rise and fall, so do the fundamental and sentiment values.
+        </p>
+        <p>
+          Intuitively, the fundamental values tend to lead card prices whereas sentiment is more lagging - although that’s not always the case.
+       </p>
+       <p>
+        This suggests that by carefully studying fundamental and sentiment trends, you can better forecast future card values.
+       </p>
+         <img
+          src="/CarrollChart.png"
+          alt="CarrollChart"
+          style={imgStyle}
+          onClick={() => openImage("/CarrollChart.png")}
+        />
+        <div style={actionsRow}>
+          <button style={openBtn} onClick={() => openPdf("/CarrollChart.pdf")}>
+            View PDF
+          </button>
+          <a style={linkBtn} href="/CarrollChart.pdf" download>
+            Download PDF
+          </a>
+          <a style={linkBtn} href="/CarrollChart.png" download>
+            Download Image
+          </a>
+        </div>
+      </article>
+      
       {/* Blog Entry 45 */}
       <article style={entryStyle}>
         <h2 style={{ color: "#BF5700" }}>
