@@ -248,7 +248,7 @@ export default function GradingCompanies() {
       psa: pick(["PSA", "Professional Sports Authenticator"]),
       bgs: pick(["BGS", "Beckett", "Beckett Grading Services"]),
       sgc: pick(["SGC", "Sportscard Guaranty", "Sportscard Guaranty Corporation"]),
-      cgc: pick(["CGC", "CGC Cards", "Certified Guaranty Company", "CSG"]) // include legacy CSG alias
+      cgc: pick(["CGC", "CGC Cards", "Certified Guaranty Company", "CSG"])
     };
   }, [companyIndex]);
 
@@ -288,7 +288,6 @@ export default function GradingCompanies() {
     const xr = (cx - plotLeft) / (plotWidth || 1);
     const yr = (cy - plotTop) / (plotHeight || 1);
     const xv = x0 + xr * (x1 - x0);
-    // y pixels grow down; invert for data space
     const yv = y0 + (1 - yr) * (y1 - y0);
     return { x: xv, y: yv };
   }
@@ -312,7 +311,7 @@ export default function GradingCompanies() {
     const y1 = Math.min(a.y, b.y), y2 = Math.max(a.y, b.y);
 
     // ignore tiny selections
-    if (Math.abs(x2 - x1) < 1e-6 || Math.abs(y2 - y1) < 1e-6) {
+       if (Math.abs(x2 - x1) < 1e-6 || Math.abs(y2 - y1) < 1e-6) {
       setDragPxStart(null); setDragPxEnd(null); return;
     }
     const padX = (x2 - x1) * 0.05 || 0.5;
@@ -358,6 +357,10 @@ export default function GradingCompanies() {
       <h2 style={{ color: BURNT_ORANGE, textAlign: "center", marginBottom: 6 }}>
         Grading Companies
       </h2>
+
+      {/* ---- CALCULATOR AT TOP ---- */}
+      <GradeDecisionCalculator />
+      <hr style={{ margin: "28px 0", border: 0, borderTop: "1px solid #eee" }} />
 
       {zoom && (
         <button
@@ -573,7 +576,6 @@ function OtherCompanies({ data, stats }) {
   }, [data, CORE]);
 
   const profileMap = useMemo(() => {
-    // Compact, site-style paraphrases for common “other” graders.
     return {
       "arena": "Arena Club pairs grading with a digital vault/marketplace and a tech-forward submission flow.",
       "arena club": "Arena Club pairs grading with a digital vault/marketplace and a tech-forward submission flow.",
@@ -685,5 +687,243 @@ function OtherCompanies({ data, stats }) {
         Note: Verify current fees, tiers, and resale comps for your specific card before submitting.
       </div>
     </div>
+  );
+}
+
+/* =========================
+   Grade Decision Calculator
+   ========================= */
+function GradeDecisionCalculator() {
+  const burntOrange = BURNT_ORANGE;
+  const lightHighlight = "#FFF8F3";
+  const borderGray = "#ddd";
+
+  // Defaults to match your slide example
+  const [gradingCost, setGradingCost] = useState(20);
+  const [probPerfect, setProbPerfect] = useState(0.43);
+  const [multiplier, setMultiplier] = useState(2);
+
+  const computeRequiredRaw = (gc, p, m) => {
+    const denom = p * (m - 1);
+    return denom > 0 ? gc / denom : NaN;
+  };
+
+  const headlineValue = useMemo(
+    () => computeRequiredRaw(gradingCost, probPerfect, multiplier),
+    [gradingCost, probPerfect, multiplier]
+  );
+
+  const fmtMoney = (x) =>
+    isFinite(x) ? x.toLocaleString(undefined, { style: "currency", currency: "USD", minimumFractionDigits: 2 }) : "—";
+  const isClose = (a, b, tol = 1e-9) => Math.abs(a - b) <= tol;
+
+  return (
+    <section style={{ marginTop: 8 }}>
+      <h2 style={{ color: burntOrange, textAlign: "center", margin: "0 0 6px" }}>
+        To Grade or Not to Grade?
+      </h2>
+
+      {/* Explainer */}
+      <div
+        style={{
+          border: `1px solid ${borderGray}`,
+          borderLeft: `4px solid ${burntOrange}`,
+          background: lightHighlight,
+          padding: "12px 14px",
+          borderRadius: 8,
+          marginBottom: 12,
+          lineHeight: 1.5,
+        }}
+      >
+        Deciding to grade a card depends on the raw card value, grading cost, probability of a perfect grade,
+        and the expected value based on a perfect grade (multiplier).
+      </div>
+
+      {/* Formula + Controls */}
+      <div style={{ textAlign: "center", marginBottom: 6 }}>
+        <span style={{ fontWeight: 700, color: burntOrange }}>Raw Card Value Required To Grade</span> ={" "}
+        <b>Grading Cost</b> ÷ <b>(Probability × (Multiplier − 1))</b>
+      </div>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))",
+          gap: 10,
+          marginTop: 10,
+        }}
+      >
+        <LabeledInput
+          label="Grading Cost ($)"
+          value={gradingCost}
+          onChange={(v) => setGradingCost(Number(v) || 0)}
+          type="number"
+          min="0"
+          step="1"
+        />
+        <LabeledInput
+          label="Probability of Perfect Grade (0–1)"
+          value={probPerfect}
+          onChange={(v) => setProbPerfect(Number(v) || 0)}
+          type="number"
+          min="0"
+          max="1"
+          step="0.01"
+        />
+        <LabeledInput
+          label="Multiplier (graded ÷ raw)"
+          value={multiplier}
+          onChange={(v) => setMultiplier(Number(v) || 0)}
+          type="number"
+          min="1.01"
+          step="0.1"
+        />
+      </div>
+
+      {/* Result */}
+      <div
+        style={{
+          marginTop: 12,
+          border: `1px solid ${borderGray}`,
+          borderRadius: 8,
+          padding: "10px 12px",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: 10,
+        }}
+      >
+        <div style={{ fontSize: 14, color: "#555" }}>
+          Minimum raw card value to justify grading:
+        </div>
+        <div
+          style={{
+            fontSize: 26,
+            fontWeight: 700,
+            color: "#111",
+            background: lightHighlight,
+            border: `1px dashed ${burntOrange}`,
+            padding: "6px 10px",
+            borderRadius: 8,
+          }}
+        >
+          {fmtMoney(headlineValue)}
+        </div>
+      </div>
+
+      {/* Matrix */}
+      <h3 style={{ color: burntOrange, margin: "18px 0 8px" }}>Probability Matrix</h3>
+      <div style={{ fontSize: 13, color: "#666", marginBottom: 8 }}>
+        Each cell shows the <b>raw value required</b> for the given Probability (row) and Multiplier (column). Uses your current <b>Grading Cost = {fmtMoney(gradingCost)}</b>.
+      </div>
+
+      <div style={{ overflowX: "auto" }}>
+        <table
+          style={{
+            width: "100%",
+            borderCollapse: "collapse",
+            minWidth: 560,
+            border: `1px solid ${borderGray}`,
+          }}
+        >
+          <thead>
+            <tr style={{ background: lightHighlight }}>
+              <th
+                style={{
+                  border: `1px solid ${borderGray}`,
+                  padding: "8px 10px",
+                  textAlign: "left",
+                  fontWeight: 700,
+                }}
+              >
+                Probability ↓ / Multiplier →
+              </th>
+              {[1.5, 2, 3, 4, 5].map((m) => (
+                <th
+                  key={`h-${m}`}
+                  style={{
+                    border: `1px solid ${borderGray}`,
+                    padding: "8px 10px",
+                    textAlign: "right",
+                    fontWeight: 700,
+                    color: isClose(m, multiplier) ? "#fff" : "#222",
+                    background: isClose(m, multiplier) ? BURNT_ORANGE : lightHighlight,
+                  }}
+                  title={`Multiplier = ${m.toFixed(2)}`}
+                >
+                  {m}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {[0.10, 0.20, 0.30, 0.40, 0.50, 0.43].map((p) => {
+              const isPSA = isClose(p, 0.43);
+              return (
+                <tr key={`r-${p}`} style={{ background: isPSA ? "#f5fff5" : "transparent" }}>
+                  <td
+                    style={{
+                      border: `1px solid ${borderGray}`,
+                      padding: "8px 10px",
+                      fontWeight: isPSA ? 700 : 500,
+                      color: isPSA ? BURNT_ORANGE : "#333",
+                    }}
+                  >
+                    {p.toFixed(2)}{isPSA && <span style={{ marginLeft: 6, fontSize: 12, color: "#2b7a2b" }}>(example 0.43)</span>}
+                  </td>
+                  {[1.5, 2, 3, 4, 5].map((m) => {
+                    const val = computeRequiredRaw(gradingCost, p, m);
+                    const highlight = isPSA && isClose(m, 2);
+                    return (
+                      <td
+                        key={`c-${p}-${m}`}
+                        style={{
+                          border: `1px solid ${borderGray}`,
+                          padding: "8px 10px",
+                          textAlign: "right",
+                          background: highlight ? "#fff3f0" : "transparent",
+                          fontWeight: highlight ? 700 : 500,
+                          color: highlight ? BURNT_ORANGE : "#222",
+                        }}
+                        title={`P=${p.toFixed(2)}, Mult=${m}`}
+                      >
+                        {fmtMoney(val)}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      <div style={{ marginTop: 10, fontSize: 12, color: "#777" }}>
+        Source: Longhorn Cards & Collectibles • Calculator generated by ChatGPT • {new Date().toLocaleDateString()}
+      </div>
+    </section>
+  );
+}
+
+// Small labeled input helper
+function LabeledInput({ label, value, onChange, type = "text", ...rest }) {
+  return (
+    <label style={{ display: "grid", gap: 6 }}>
+      <span style={{ fontSize: 13, color: "#444" }}>{label}</span>
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        {...rest}
+        style={{
+          padding: "10px 12px",
+          borderRadius: 8,
+          border: "1px solid #ddd",
+          outlineColor: BURNT_ORANGE,
+          fontSize: 16,
+        }}
+      />
+    </label>
   );
 }
