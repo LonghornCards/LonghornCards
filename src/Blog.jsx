@@ -469,6 +469,42 @@ export default function Blog() {
 
       {/* ------------------ YOUR POSTS BELOW (unchanged content) ------------------ */}
 
+      {/* Blog Entry 47 */}
+      <article style={entryStyle}>
+        <h2 style={{ color: "#BF5700" }}>
+          GOAT Comparison - Card Prices (September 2025)
+        </h2>
+        <p>
+          This is a 1-year snapshot of card performance for a few GOATS in Basketball and Football.
+        </p>
+        <p>
+          Patrick Mahomes (+49%) and Michael Jordan (+41%) are leading the pack, and well outpacing their peers of Tom Brady (+25%) and LeBron James (+5%), respectively.
+        </p>
+        <p>
+          Overall only LeBron is lagging, with the others in-line or outperforming the CL 50 index.
+       </p>
+       <p>
+        Going forward all are showing very attractive technicals, and future appreciation over the medium term appears likely as the market continues to grind higher.
+       </p>
+         <img
+          src="/GOATS_9.12.25.png"
+          alt="GOATS_9.12.25"
+          style={imgStyle}
+          onClick={() => openImage("/GOATS_9.12.25.png")}
+        />
+        <div style={actionsRow}>
+          <button style={openBtn} onClick={() => openPdf("/GOATS_9.12.25.pdf")}>
+            View PDF
+          </button>
+          <a style={linkBtn} href="/GOATS_9.12.25.pdf" download>
+            Download PDF
+          </a>
+          <a style={linkBtn} href="/GOATS_9.12.25.png" download>
+            Download Image
+          </a>
+        </div>
+      </article>
+      
       {/* Blog Entry 46 */}
       <article style={entryStyle}>
         <h2 style={{ color: "#BF5700" }}>
