@@ -275,7 +275,7 @@ export default function HomePage() {
         backgroundColor: "#fff",
       }}
     >
-     {/* Navigation Menu */}
+    {/* Navigation Menu */}
 <nav
   style={{
     display: "flex",
@@ -287,6 +287,7 @@ export default function HomePage() {
     backgroundColor: "#fafafa",
   }}
 >
+
   <Link
     to="/"
     style={{
@@ -299,7 +300,6 @@ export default function HomePage() {
     Home
   </Link>
 
-  {/* Feeds */}
   <Link
     to="/feeds"
     style={{
@@ -312,7 +312,6 @@ export default function HomePage() {
     Feeds
   </Link>
 
-  {/* History */}
   <Link
     to="/history"
     style={{
@@ -325,7 +324,6 @@ export default function HomePage() {
     History of Sports Cards
   </Link>
 
-  {/* Grading Companies */}
   <Link
     to="/grading-companies"
     style={{
@@ -338,18 +336,6 @@ export default function HomePage() {
     Grading Companies
   </Link>
 
-  {/* Blog */}
-  <Link
-    to="/blog"
-    style={{
-      textDecoration: "none",
-      color: burntOrange,
-      fontWeight: "bold",
-      fontSize: "1.1rem",
-    }}
-  >
-    Blog
-  </Link>
 </nav>
 
       {/* Logo + Business Name */}
