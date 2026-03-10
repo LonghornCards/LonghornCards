@@ -275,93 +275,82 @@ export default function HomePage() {
         backgroundColor: "#fff",
       }}
     >
-      {/* Navigation Menu */}
-      <nav
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          gap: "30px",
-          marginBottom: "30px",
-          borderBottom: `2px solid ${burntOrange}`,
-          paddingBottom: "10px",
-          backgroundColor: "#fafafa",
-        }}
-      >
-        <Link
-          to="/"
-          style={{
-            textDecoration: "none",
-            color: burntOrange,
-            fontWeight: "bold",
-            fontSize: "1.1rem",
-          }}
-        >
-          Home
-        </Link>
+     {/* Navigation Menu */}
+<nav
+  style={{
+    display: "flex",
+    justifyContent: "center",
+    gap: "30px",
+    marginBottom: "30px",
+    borderBottom: `2px solid ${burntOrange}`,
+    paddingBottom: "10px",
+    backgroundColor: "#fafafa",
+  }}
+>
+  <Link
+    to="/"
+    style={{
+      textDecoration: "none",
+      color: burntOrange,
+      fontWeight: "bold",
+      fontSize: "1.1rem",
+    }}
+  >
+    Home
+  </Link>
 
-        {/* ✅ Feeds link */}
-        <Link
-          to="/feeds"
-          style={{
-            textDecoration: "none",
-            color: burntOrange,
-            fontWeight: "bold",
-            fontSize: "1.1rem",
-          }}
-        >
-          Feeds
-        </Link>
+  {/* Feeds */}
+  <Link
+    to="/feeds"
+    style={{
+      textDecoration: "none",
+      color: burntOrange,
+      fontWeight: "bold",
+      fontSize: "1.1rem",
+    }}
+  >
+    Feeds
+  </Link>
 
-        <Link
-          to="/history"
-          style={{
-            textDecoration: "none",
-            color: burntOrange,
-            fontWeight: "bold",
-            fontSize: "1.1rem",
-          }}
-        >
-          History of Sports Cards
-        </Link>
+  {/* History */}
+  <Link
+    to="/history"
+    style={{
+      textDecoration: "none",
+      color: burntOrange,
+      fontWeight: "bold",
+      fontSize: "1.1rem",
+    }}
+  >
+    History of Sports Cards
+  </Link>
 
-        <Link
-          to="/research"
-          style={{
-            textDecoration: "none",
-            color: burntOrange,
-            fontWeight: "bold",
-            fontSize: "1.1rem",
-          }}
-        >
-          Research
-        </Link>
+  {/* Grading Companies */}
+  <Link
+    to="/grading-companies"
+    style={{
+      textDecoration: "none",
+      color: burntOrange,
+      fontWeight: "bold",
+      fontSize: "1.1rem",
+    }}
+  >
+    Grading Companies
+  </Link>
 
-        {/* ✅ NEW: Grading Companies */}
-        <Link
-          to="/grading-companies"
-          style={{
-            textDecoration: "none",
-            color: burntOrange,
-            fontWeight: "bold",
-            fontSize: "1.1rem",
-          }}
-        >
-          Grading Companies
-        </Link>
-
-        {/* ✅ Blog link (next to Research) */}
-        <Link
-          to="/blog"
-          style={{
-            textDecoration: "none",
-            color: burntOrange,
-            fontWeight: "bold",
-            fontSize: "1.1rem",
-          }}
-        >
-          Blog
-        </Link>
-      </nav>
+  {/* Blog */}
+  <Link
+    to="/blog"
+    style={{
+      textDecoration: "none",
+      color: burntOrange,
+      fontWeight: "bold",
+      fontSize: "1.1rem",
+    }}
+  >
+    Blog
+  </Link>
+</nav>
 
       {/* Logo + Business Name */}
       <div style={{ marginBottom: "40px" }}>
